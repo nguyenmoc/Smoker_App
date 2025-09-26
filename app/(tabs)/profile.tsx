@@ -1,14 +1,18 @@
+import AnimatedHeader from '@/components/ui/AnimatedHeader';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   Alert,
+  Animated,
   Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
+  RefreshControl,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Switch,
   Text,
@@ -40,7 +44,7 @@ interface UserProfile {
 
 const initialProfile: UserProfile = {
   id: '1',
-  name: 'Nguyễn Văn A',
+  name: 'Nguyễn Thành Nam',
   email: 'nguyenvana@email.com',
   phone: '0123456789',
   bio: 'Yêu thích công nghệ và du lịch. Đam mê khám phá những điều mới mẻ.',
@@ -64,6 +68,13 @@ export default function ProfileScreen() {
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editingField, setEditingField] = useState<string>('');
   const [tempValue, setTempValue] = useState('');
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    setTimeout(() => setRefreshing(false), 2000);
+  };
 
   const handleLogout = () => {
     Alert.alert(
@@ -139,12 +150,12 @@ export default function ProfileScreen() {
     return labels[field] || field;
   };
 
-  const ProfileItem = ({ 
-    label, 
-    value, 
-    icon, 
-    onPress, 
-    editable = true 
+  const ProfileItem = ({
+    label,
+    value,
+    icon,
+    onPress,
+    editable = true
   }: {
     label: string;
     value: string;
@@ -152,8 +163,8 @@ export default function ProfileScreen() {
     onPress?: () => void;
     editable?: boolean;
   }) => (
-    <TouchableOpacity 
-      style={styles.profileItem} 
+    <TouchableOpacity
+      style={styles.profileItem}
       onPress={editable ? onPress : undefined}
       disabled={!editable}
     >
@@ -168,19 +179,35 @@ export default function ProfileScreen() {
     </TouchableOpacity>
   );
 
+  const headerTranslateY = scrollY.interpolate({
+    inputRange: [0, 100],
+    outputRange: [0, -100],
+    extrapolate: 'clamp',
+  });
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Hồ sơ</Text>
-          <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-            <Ionicons name="log-out-outline" size={24} color="#ef4444" />
-          </TouchableOpacity>
-        </View>
+      <StatusBar barStyle="light-content" backgroundColor="#1f2937" />
 
+      <AnimatedHeader
+        title="Smoker App"
+        subtitle="Khám phá ngay"
+        iconName="log-out-outline"
+        onIconPress={handleLogout}
+        headerTranslateY={headerTranslateY}
+      />
+      <Animated.ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 120 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: true }
+        )}
+        scrollEventThrottle={16}
+      >
         {/* Cover Image */}
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.coverContainer}
           onPress={() => pickImage('cover')}
         >
@@ -192,7 +219,7 @@ export default function ProfileScreen() {
         </TouchableOpacity>
 
         {/* Avatar - Overlapping cover image */}
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.avatarContainer}
           onPress={() => pickImage('avatar')}
         >
@@ -227,63 +254,63 @@ export default function ProfileScreen() {
         {/* Profile Information */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Thông tin cá nhân</Text>
-          
+
           <ProfileItem
             label="Tên"
             value={profile.name}
             icon="person-outline"
             onPress={() => openEditModal('name', profile.name)}
           />
-          
+
           <ProfileItem
             label="Email"
             value={profile.email}
             icon="mail-outline"
             editable={false}
           />
-          
+
           <ProfileItem
             label="Số điện thoại"
             value={profile.phone}
             icon="call-outline"
             onPress={() => openEditModal('phone', profile.phone)}
           />
-          
+
           <ProfileItem
             label="Tiểu sử"
             value={profile.bio}
             icon="document-text-outline"
             onPress={() => openEditModal('bio', profile.bio)}
           />
-          
+
           <ProfileItem
             label="Địa điểm"
             value={profile.location}
             icon="location-outline"
             onPress={() => openEditModal('location', profile.location)}
           />
-          
+
           <ProfileItem
             label="Website"
             value={profile.website}
             icon="globe-outline"
             onPress={() => openEditModal('website', profile.website)}
           />
-          
+
           <ProfileItem
             label="Ngày sinh"
             value={profile.birthday}
             icon="calendar-outline"
             onPress={() => openEditModal('birthday', profile.birthday)}
           />
-          
+
           <ProfileItem
             label="Giới tính"
             value={profile.gender}
             icon="person"
             onPress={() => openEditModal('gender', profile.gender)}
           />
-          
+
           <ProfileItem
             label="Tình trạng hôn nhân"
             value={profile.relationship}
@@ -295,7 +322,7 @@ export default function ProfileScreen() {
         {/* Settings */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Cài đặt</Text>
-          
+
           <View style={styles.settingItem}>
             <View style={styles.profileItemLeft}>
               <Ionicons name="lock-closed-outline" size={20} color="#6b7280" />
@@ -308,7 +335,7 @@ export default function ProfileScreen() {
             </View>
             <Switch
               value={profile.isPrivate}
-              onValueChange={(value) => 
+              onValueChange={(value) =>
                 setProfile(prev => ({ ...prev, isPrivate: value }))
               }
             />
@@ -326,7 +353,7 @@ export default function ProfileScreen() {
             </View>
             <Switch
               value={profile.notifications}
-              onValueChange={(value) => 
+              onValueChange={(value) =>
                 setProfile(prev => ({ ...prev, notifications: value }))
               }
             />
@@ -340,7 +367,7 @@ export default function ProfileScreen() {
             <Text style={styles.editProfileText}>Chỉnh sửa hồ sơ</Text>
           </TouchableOpacity>
         </View>
-      </ScrollView>
+      </Animated.ScrollView>
 
       {/* Edit Modal */}
       <Modal
@@ -349,7 +376,7 @@ export default function ProfileScreen() {
         transparent={true}
         onRequestClose={() => setEditModalVisible(false)}
       >
-        <KeyboardAvoidingView 
+        <KeyboardAvoidingView
           style={styles.modalOverlay}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
@@ -416,6 +443,7 @@ const styles = StyleSheet.create({
   coverContainer: {
     position: 'relative',
     height: 300,
+    marginTop: 40,
   },
   coverImage: {
     width: '100%',
@@ -489,6 +517,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#111827',
     marginBottom: 4,
+    marginTop: 16
   },
   bio: {
     fontSize: 16,
@@ -589,7 +618,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginLeft: 6,
   },
-  
+
   // Modal Styles
   modalOverlay: {
     flex: 1,
