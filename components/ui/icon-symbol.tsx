@@ -23,6 +23,9 @@ const MAPPING = {
   'person.crop.circle': 'person',        // profile
   'newspaper.fill': 'article',           // new feed
   'bell.fill': 'notifications',          // notification
+
+  'table.fill': 'table-restaurant', // Icon bàn (dùng table-restaurant cho phù hợp)
+  'plus.circle.fill': 'add-circle', // Icon thêm bàn (nếu cần cho nút thêm)
 } as IconMapping;
 
 
