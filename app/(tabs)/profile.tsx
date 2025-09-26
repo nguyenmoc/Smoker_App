@@ -39,20 +39,6 @@ interface UserProfile {
   notifications: boolean;
 }
 
-interface Table {
-  id: string;
-  number: number;
-  type: 'vip' | 'thường' | 'premium';
-  status: 'trống' | 'đang sử dụng' | 'đã đặt';
-  capacity: number;
-}
-
-const tableTypes = [
-  { value: 'thường', label: 'Bàn thường', color: '#6b7280' },
-  { value: 'vip', label: 'Bàn VIP', color: '#f59e0b' },
-  { value: 'premium', label: 'Bàn Premium', color: '#8b5cf6' },
-];
-
 const initialProfile: UserProfile = {
   id: '1',
   name: 'Nguyễn Thành Nam',
@@ -74,15 +60,9 @@ export default function ProfileScreen() {
   const router = useRouter();
   const [profile, setProfile] = useState<UserProfile>(initialProfile);
   const [editModalVisible, setEditModalVisible] = useState(false);
-  const [tableModalVisible, setTableModalVisible] = useState(false);
   const [editingField, setEditingField] = useState<string>('');
   const [tempValue, setTempValue] = useState('');
-  const [tables, setTables] = useState<Table[]>([]);
-  const [newTable, setNewTable] = useState({
-    number: '',
-    type: 'thường' as 'vip' | 'thường' | 'premium',
-    capacity: '',
-  });
+
   const scrollY = useRef(new Animated.Value(0)).current;
   const [refreshing, setRefreshing] = useState(false);
 
@@ -151,40 +131,6 @@ export default function ProfileScreen() {
     Alert.alert('Thành công', 'Đã cập nhật thông tin');
   };
 
-  const openTableModal = () => {
-    setNewTable({
-      number: '',
-      type: 'thường',
-      capacity: '',
-    });
-    setTableModalVisible(true);
-  };
-
-  const createTable = () => {
-    if (!newTable.number || !newTable.capacity) {
-      Alert.alert('Lỗi', 'Vui lòng điền đầy đủ thông tin');
-      return;
-    }
-
-    const tableExists = tables.find(table => table.number === parseInt(newTable.number));
-    if (tableExists) {
-      Alert.alert('Lỗi', 'Số bàn đã tồn tại');
-      return;
-    }
-
-    const table: Table = {
-      id: Date.now().toString(),
-      number: parseInt(newTable.number),
-      type: newTable.type,
-      capacity: parseInt(newTable.capacity),
-      status: 'trống',
-    };
-
-    setTables(prev => [...prev, table].sort((a, b) => a.number - b.number));
-    setTableModalVisible(false);
-    Alert.alert('Thành công', 'Đã tạo bàn mới');
-  };
-
   const getFieldLabel = (field: string) => {
     const labels: { [key: string]: string } = {
       name: 'Tên',
@@ -225,28 +171,6 @@ export default function ProfileScreen() {
       {editable && <Ionicons name="chevron-forward" size={16} color="#6b7280" />}
     </TouchableOpacity>
   );
-
-  const TableItem = ({ table }: { table: Table }) => {
-    const typeConfig = tableTypes.find(t => t.value === table.type);
-    return (
-      <View style={styles.tableItem}>
-        <View style={styles.tableItemLeft}>
-          <View style={[styles.tableTypeIndicator, { backgroundColor: typeConfig?.color }]} />
-          <View>
-            <Text style={styles.tableNumber}>Bàn {table.number}</Text>
-            <Text style={styles.tableType}>{typeConfig?.label} - {table.capacity} người</Text>
-            <Text style={[styles.tableStatus, 
-              table.status === 'trống' && { color: '#10b981' },
-              table.status === 'đang sử dụng' && { color: '#ef4444' },
-              table.status === 'đã đặt' && { color: '#f59e0b' }
-            ]}>
-              {table.status.charAt(0).toUpperCase() + table.status.slice(1)}
-            </Text>
-          </View>
-        </View>
-      </View>
-    );
-  };
 
   const headerTranslateY = scrollY.interpolate({
     inputRange: [0, 100],
