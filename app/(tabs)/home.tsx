@@ -171,7 +171,7 @@ export default function NewFeedScreen() {
 
   const headerTranslateY = scrollY.interpolate({
     inputRange: [0, 100],
-    outputRange: [0, -50],
+    outputRange: [0, -100],
     extrapolate: 'clamp',
   });
 
@@ -184,8 +184,8 @@ export default function NewFeedScreen() {
         <LinearGradient colors={['#1f2937', '#374151']} style={styles.headerGradient}>
           <View style={styles.headerContent}>
             <View>
-              <Text style={styles.headerTitle}>Cinema App</Text>
-              <Text style={styles.headerSubtitle}>Khám phá phim hay</Text>
+              <Text style={styles.headerTitle}>Smoker App</Text>
+              <Text style={styles.headerSubtitle}>Khám phá ngay</Text>
             </View>
             <TouchableOpacity style={styles.searchButton}>
               <Ionicons name="search-outline" size={24} color="#fff" />
@@ -324,7 +324,7 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   headerGradient: {
-    paddingTop: 20,
+    paddingTop: 40,
   },
   headerContent: {
     flexDirection: 'row',
@@ -355,7 +355,7 @@ const styles = StyleSheet.create({
   // Banner Styles
   carouselContainer: {
     height: 280,
-    marginTop: 80,
+    marginTop: 40,
   },
   bannerSlide: {
     width,
