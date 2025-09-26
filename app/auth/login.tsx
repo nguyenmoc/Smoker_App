@@ -42,7 +42,7 @@ export default function LoginScreen() {
           contentFit="contain"
         />
 
-        <Text style={styles.brandText}>SMOKE</Text>
+        <Text style={styles.brandText}>SMOKER</Text>
       </View>
 
       <View>

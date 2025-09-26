@@ -39,7 +39,7 @@ export default function RegisterScreen() {
           style={styles.reactLogo}
           contentFit="contain"
         />
-        <Text style={styles.brandText}>SMOKE</Text>
+        <Text style={styles.brandText}>SMOKER</Text>
       </View>
 
       <View>
