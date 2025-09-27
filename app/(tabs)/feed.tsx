@@ -18,86 +18,116 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width, height } = Dimensions.get("window");
-const POSTER_WIDTH = width * 0.42;
-const POSTER_HEIGHT = POSTER_WIDTH * 1.5;
+const COMBO_WIDTH = width * 0.42;
+const COMBO_HEIGHT = COMBO_WIDTH * 0.8;
 
+// Data banner quảng cáo các combo hot
 const bannerData = [
   {
     id: "1",
-    title: "Avengers: Endgame",
+    title: "Happy Hour 50% OFF",
+    subtitle: "Mọi đồ uống từ 17h-19h",
     image: "https://picsum.photos/400/250?random=1",
-    rating: 9.2,
+    discount: "50%",
   },
   {
     id: "2",
-    title: "Spider-Man: No Way Home",
+    title: "Combo Sinh Nhật VIP",
+    subtitle: "Miễn phí bánh kem + trang trí",
     image: "https://picsum.photos/400/250?random=2",
-    rating: 8.8,
+    discount: "FREE",
   },
   {
     id: "3",
-    title: "Top Gun: Maverick",
+    title: "Weekend Party",
+    subtitle: "DJ live + Cocktail đặc biệt",
     image: "https://picsum.photos/400/250?random=3",
-    rating: 8.9,
+    discount: "30%",
   },
 ];
 
-const moviesData = [
+// Data các combo đồ uống và món ăn
+const combosData = [
   {
     id: "1",
-    title: "THE BATMAN",
-    poster: "https://picsum.photos/300/450?random=10",
-    duration: "176 phút",
-    rating: "T16",
-    genre: "Hành động, Phiêu lưu",
-    releaseDate: "04/03/2024",
-    score: 8.5,
+    title: "COMBO ROMANTIC",
+    image: "https://picsum.photos/300/240?random=10",
+    originalPrice: "850.000đ",
+    salePrice: "650.000đ",
+    category: "couple",
+    items: ["2 Cocktail đặc biệt", "Bánh ngọt", "Nến thơm"],
+    suitable: "2-3 người",
+    rating: 4.8,
+    reviews: 124,
+    isHot: true,
   },
   {
     id: "2",
-    title: "DOCTOR STRANGE 2",
-    poster: "https://picsum.photos/300/450?random=11",
-    duration: "126 phút",
-    rating: "T13",
-    genre: "Viễn tưởng, Hành động",
-    releaseDate: "06/05/2024",
-    score: 7.8,
+    title: "COMBO FRIENDS",
+    image: "https://picsum.photos/300/240?random=11",
+    originalPrice: "1.200.000đ",
+    salePrice: "950.000đ",
+    category: "group",
+    items: ["6 Bia craft", "Mix snack", "Karaoke 2h"],
+    suitable: "4-6 người",
+    rating: 4.6,
+    reviews: 89,
+    isHot: false,
   },
   {
     id: "3",
-    title: "JURASSIC WORLD 3",
-    poster: "https://picsum.photos/300/450?random=12",
-    duration: "147 phút",
-    rating: "T13",
-    genre: "Phiêu lưu, Khoa học viễn tưởng",
-    releaseDate: "10/06/2024",
-    score: 7.2,
+    title: "COMBO PREMIUM",
+    image: "https://picsum.photos/300/240?random=12",
+    originalPrice: "2.500.000đ",
+    salePrice: "2.000.000đ",
+    category: "vip",
+    items: ["Whisky premium", "Hải sản", "Phòng VIP"],
+    suitable: "6-10 người",
+    rating: 4.9,
+    reviews: 67,
+    isHot: true,
   },
   {
     id: "4",
-    title: "MINIONS 2",
-    poster: "https://picsum.photos/300/450?random=13",
-    duration: "87 phút",
-    rating: "P",
-    genre: "Hoạt hình, Hài",
-    releaseDate: "01/07/2024",
-    score: 8.1,
+    title: "COMBO BIRTHDAY",
+    image: "https://picsum.photos/300/240?random=13",
+    originalPrice: "1.500.000đ",
+    salePrice: "1.200.000đ",
+    category: "party",
+    items: ["Bánh kem", "Trang trí", "6 đồ uống"],
+    suitable: "5-8 người",
+    rating: 4.7,
+    reviews: 156,
+    isHot: false,
   },
   {
     id: "5",
-    title: "THOR: LOVE & THUNDER",
-    poster: "https://picsum.photos/300/450?random=14",
-    duration: "119 phút",
-    rating: "T13",
-    genre: "Hành động, Hài",
-    releaseDate: "08/07/2024",
-    score: 7.5,
+    title: "COMBO BUSINESS",
+    image: "https://picsum.photos/300/240?random=14",
+    originalPrice: "1.800.000đ",
+    salePrice: "1.500.000đ",
+    category: "business",
+    items: ["Wine premium", "Món Âu", "Không gian riêng"],
+    suitable: "4-6 người",
+    rating: 4.5,
+    reviews: 43,
+    isHot: false,
   },
+];
+
+// Categories cho phân loại combo
+const categories = [
+  { id: 'all', name: 'Tất cả', icon: 'apps-outline' },
+  { id: 'couple', name: 'Hẹn hò', icon: 'heart-outline' },
+  { id: 'group', name: 'Nhóm bạn', icon: 'people-outline' },
+  { id: 'vip', name: 'VIP', icon: 'diamond-outline' },
+  { id: 'party', name: 'Tiệc tùng', icon: 'balloon-outline' },
+  { id: 'business', name: 'Công việc', icon: 'briefcase-outline' },
 ];
 
 export default function NewFeedScreen() {
   const [activeIndex, setActiveIndex] = useState(0);
-  const [selectedTab, setSelectedTab] = useState('current');
+  const [selectedCategory, setSelectedCategory] = useState('all');
   const [refreshing, setRefreshing] = useState(false);
   const carouselRef = useRef<ScrollView>(null);
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -112,14 +142,22 @@ export default function NewFeedScreen() {
     setTimeout(() => setRefreshing(false), 2000);
   };
 
-  const getRatingColor = (rating: string) => {
-    switch (rating) {
-      case 'P': return '#10b981';
-      case 'T13': return '#f59e0b';
-      case 'T16': return '#ef4444';
-      case 'T18': return '#dc2626';
-      default: return '#6b7280';
+  const getFilteredCombos = () => {
+    if (selectedCategory === 'all') {
+      return combosData;
     }
+    return combosData.filter(combo => combo.category === selectedCategory);
+  };
+
+  const getCategoryColor = (category: string) => {
+    const colors = {
+      couple: '#ef4444',
+      group: '#3b82f6',
+      vip: '#f59e0b',
+      party: '#8b5cf6',
+      business: '#10b981',
+    };
+    return colors[category] || '#6b7280';
   };
 
   const BannerItem = ({ item, index }: any) => (
@@ -130,43 +168,74 @@ export default function NewFeedScreen() {
         style={styles.bannerOverlay}
       >
         <View style={styles.bannerContent}>
-          <Text style={styles.bannerTitle}>{item.title}</Text>
-          <View style={styles.bannerRating}>
-            <Ionicons name="star" size={16} color="#fbbf24" />
-            <Text style={styles.bannerRatingText}>{item.rating}</Text>
+          <View style={styles.discountBadge}>
+            <Text style={styles.discountText}>{item.discount}</Text>
           </View>
+          <Text style={styles.bannerTitle}>{item.title}</Text>
+          <Text style={styles.bannerSubtitle}>{item.subtitle}</Text>
         </View>
       </LinearGradient>
     </View>
   );
 
-  const MovieCard = ({ item }: any) => (
-    <TouchableOpacity style={styles.movieCard} activeOpacity={0.8}>
-      <View style={styles.posterContainer}>
-        <Image source={{ uri: item.poster }} style={styles.moviePoster} />
-        <View style={styles.scoreContainer}>
+  const ComboCard = ({ item }: any) => (
+    <TouchableOpacity style={styles.comboCard} activeOpacity={0.8}>
+      <View style={styles.imageContainer}>
+        <Image source={{ uri: item.image }} style={styles.comboImage} />
+        {item.isHot && (
+          <View style={styles.hotBadge}>
+            <Ionicons name="flame" size={12} color="#fff" />
+            <Text style={styles.hotText}>HOT</Text>
+          </View>
+        )}
+        <View style={styles.ratingContainer}>
           <Ionicons name="star" size={12} color="#fbbf24" />
-          <Text style={styles.scoreText}>{item.score}</Text>
+          <Text style={styles.ratingText}>{item.rating}</Text>
         </View>
       </View>
 
-      <View style={styles.movieInfo}>
-        <Text style={styles.movieTitle} numberOfLines={2}>{item.title}</Text>
-        <Text style={styles.movieGenre} numberOfLines={1}>{item.genre}</Text>
-
-        <View style={styles.movieMeta}>
-          <View style={styles.metaItem}>
-            <Ionicons name="time-outline" size={12} color="#6b7280" />
-            <Text style={styles.metaText}>{item.duration}</Text>
-          </View>
-
-          <View style={[styles.ratingBadge, { backgroundColor: getRatingColor(item.rating) }]}>
-            <Text style={styles.ratingText}>{item.rating}</Text>
-          </View>
+      <View style={styles.comboInfo}>
+        <Text style={styles.comboTitle} numberOfLines={1}>{item.title}</Text>
+        
+        <View style={styles.itemsList}>
+          {item.items.map((itemName, index) => (
+            <Text key={index} style={styles.itemText} numberOfLines={1}>
+              • {itemName}
+            </Text>
+          ))}
         </View>
 
-        <Text style={styles.releaseDate}>{item.releaseDate}</Text>
+        <View style={styles.suitableContainer}>
+          <Ionicons name="people-outline" size={14} color="#6b7280" />
+          <Text style={styles.suitableText}>{item.suitable}</Text>
+        </View>
+
+        <View style={styles.priceContainer}>
+          <Text style={styles.originalPrice}>{item.originalPrice}</Text>
+          <Text style={styles.salePrice}>{item.salePrice}</Text>
+        </View>
+
+        <View style={styles.reviewContainer}>
+          <Text style={styles.reviewText}>({item.reviews} đánh giá)</Text>
+        </View>
       </View>
+    </TouchableOpacity>
+  );
+
+  const CategoryTab = ({ item, isSelected, onPress }: any) => (
+    <TouchableOpacity
+      style={[styles.categoryTab, isSelected && styles.activeCategoryTab]}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
+      <Ionicons 
+        name={item.icon} 
+        size={18} 
+        color={isSelected ? '#fff' : '#6b7280'} 
+      />
+      <Text style={[styles.categoryText, isSelected && styles.activeCategoryText]}>
+        {item.name}
+      </Text>
     </TouchableOpacity>
   );
 
@@ -182,8 +251,6 @@ export default function NewFeedScreen() {
 
       <AnimatedHeader
         title="Combo Hot"
-        // iconName="search-outline"
-        // onIconPress={() => Alert.alert('Search')}
         headerTranslateY={headerTranslateY}
       />
 
@@ -227,42 +294,41 @@ export default function NewFeedScreen() {
         </View>
 
         {/* Category Tabs */}
-        <View style={styles.tabsContainer}>
-          <TouchableOpacity
-            style={[styles.tab, selectedTab === 'current' && styles.activeTab]}
-            onPress={() => setSelectedTab('current')}
+        <View style={styles.categoriesContainer}>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.categoriesList}
           >
-            <Text style={[styles.tabText, selectedTab === 'current' && styles.activeTabText]}>
-              Đang Chiếu
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.tab, selectedTab === 'upcoming' && styles.activeTab]}
-            onPress={() => setSelectedTab('upcoming')}
-          >
-            <Text style={[styles.tabText, selectedTab === 'upcoming' && styles.activeTabText]}>
-              Sắp Chiếu
-            </Text>
-          </TouchableOpacity>
+            {categories.map((category) => (
+              <CategoryTab
+                key={category.id}
+                item={category}
+                isSelected={selectedCategory === category.id}
+                onPress={() => setSelectedCategory(category.id)}
+              />
+            ))}
+          </ScrollView>
         </View>
 
-        {/* Movies Section */}
-        <View style={styles.moviesSection}>
+        {/* Combos Section */}
+        <View style={styles.combosSection}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Phim Hot</Text>
+            <Text style={styles.sectionTitle}>
+              Combo Đặc Biệt {selectedCategory !== 'all' && `- ${categories.find(c => c.id === selectedCategory)?.name}`}
+            </Text>
             <TouchableOpacity>
               <Text style={styles.seeAll}>Xem tất cả</Text>
             </TouchableOpacity>
           </View>
 
           <FlatList
-            data={moviesData}
+            data={getFilteredCombos()}
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.moviesList}
+            contentContainerStyle={styles.combosList}
             keyExtractor={(item) => item.id}
-            renderItem={({ item }) => <MovieCard item={item} />}
+            renderItem={({ item }) => <ComboCard item={item} />}
           />
         </View>
 
@@ -270,8 +336,8 @@ export default function NewFeedScreen() {
         <View style={styles.quickActions}>
           <TouchableOpacity style={styles.actionCard}>
             <LinearGradient colors={['#3b82f6', '#1d4ed8']} style={styles.actionGradient}>
-              <Ionicons name="ticket-outline" size={28} color="#fff" />
-              <Text style={styles.actionText}>Đặt vé nhanh</Text>
+              <Ionicons name="calendar-outline" size={28} color="#fff" />
+              <Text style={styles.actionText}>Đặt bàn</Text>
             </LinearGradient>
           </TouchableOpacity>
 
@@ -285,7 +351,7 @@ export default function NewFeedScreen() {
           <TouchableOpacity style={styles.actionCard}>
             <LinearGradient colors={['#f59e0b', '#d97706']} style={styles.actionGradient}>
               <Ionicons name="location-outline" size={28} color="#fff" />
-              <Text style={styles.actionText}>Rạp gần nhất</Text>
+              <Text style={styles.actionText}>Chi nhánh</Text>
             </LinearGradient>
           </TouchableOpacity>
         </View>
@@ -294,8 +360,8 @@ export default function NewFeedScreen() {
       {/* Floating Book Button */}
       <TouchableOpacity style={styles.floatingButton} activeOpacity={0.8}>
         <LinearGradient colors={['#ef4444', '#dc2626']} style={styles.floatingGradient}>
-          <Ionicons name="ticket" size={20} color="#fff" />
-          <Text style={styles.floatingText}>Đặt vé ngay</Text>
+          <Ionicons name="calendar" size={20} color="#fff" />
+          <Text style={styles.floatingText}>Đặt bàn ngay</Text>
         </LinearGradient>
       </TouchableOpacity>
     </SafeAreaView>
@@ -307,6 +373,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f8fafc",
   },
+  
   // Banner Styles
   carouselContainer: {
     height: 280,
@@ -335,25 +402,28 @@ const styles = StyleSheet.create({
   bannerContent: {
     alignItems: 'flex-start',
   },
+  discountBadge: {
+    backgroundColor: '#ef4444',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginBottom: 12,
+  },
+  discountText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
   bannerTitle: {
     fontSize: 28,
     fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 8,
+    marginBottom: 4,
   },
-  bannerRating: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  bannerRatingText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-    marginLeft: 4,
+  bannerSubtitle: {
+    fontSize: 16,
+    color: '#e5e7eb',
+    marginTop: 4,
   },
 
   // Pagination
@@ -375,40 +445,46 @@ const styles = StyleSheet.create({
     width: 20,
   },
 
-  // Tabs
-  tabsContainer: {
-    flexDirection: 'row',
-    marginHorizontal: 20,
+  // Categories
+  categoriesContainer: {
     marginVertical: 20,
-    backgroundColor: '#e5e7eb',
-    borderRadius: 25,
-    padding: 4,
   },
-  tab: {
-    flex: 1,
-    paddingVertical: 12,
+  categoriesList: {
+    paddingHorizontal: 20,
+    paddingRight: 40,
+  },
+  categoryTab: {
+    flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 20,
-  },
-  activeTab: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    marginRight: 12,
     backgroundColor: '#fff',
+    borderRadius: 25,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.05,
     shadowRadius: 4,
-    elevation: 3,
+    elevation: 2,
   },
-  tabText: {
+  activeCategoryTab: {
+    backgroundColor: '#3b82f6',
+    borderColor: '#3b82f6',
+  },
+  categoryText: {
     fontSize: 14,
     fontWeight: '600',
     color: '#6b7280',
+    marginLeft: 6,
   },
-  activeTabText: {
-    color: '#1f2937',
+  activeCategoryText: {
+    color: '#fff',
   },
 
-  // Movies Section
-  moviesSection: {
+  // Combos Section
+  combosSection: {
     marginBottom: 30,
   },
   sectionHeader: {
@@ -419,25 +495,26 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#1f2937',
+    flex: 1,
   },
   seeAll: {
     fontSize: 14,
     color: '#3b82f6',
     fontWeight: '600',
   },
-  moviesList: {
+  combosList: {
     paddingHorizontal: 20,
   },
 
-  // Movie Card
-  movieCard: {
-    width: POSTER_WIDTH,
+  // Combo Card
+  comboCard: {
+    width: COMBO_WIDTH,
     marginRight: 15,
     backgroundColor: '#fff',
-    borderRadius: 12,
+    borderRadius: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
@@ -445,14 +522,31 @@ const styles = StyleSheet.create({
     elevation: 5,
     overflow: 'hidden',
   },
-  posterContainer: {
+  imageContainer: {
     position: 'relative',
   },
-  moviePoster: {
+  comboImage: {
     width: '100%',
-    height: POSTER_HEIGHT,
+    height: COMBO_HEIGHT,
   },
-  scoreContainer: {
+  hotBadge: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ef4444',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  hotText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 'bold',
+    marginLeft: 2,
+  },
+  ratingContainer: {
     position: 'absolute',
     top: 8,
     right: 8,
@@ -463,53 +557,61 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 12,
   },
-  scoreText: {
+  ratingText: {
     color: '#fff',
     fontSize: 12,
     fontWeight: '600',
     marginLeft: 2,
   },
-  movieInfo: {
+  comboInfo: {
     padding: 12,
   },
-  movieTitle: {
-    fontSize: 14,
+  comboTitle: {
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#1f2937',
-    marginBottom: 4,
-  },
-  movieGenre: {
-    fontSize: 12,
-    color: '#6b7280',
-    marginBottom: 8,
-  },
-  movieMeta: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     marginBottom: 6,
   },
-  metaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  itemsList: {
+    marginBottom: 8,
   },
-  metaText: {
+  itemText: {
     fontSize: 11,
     color: '#6b7280',
+    marginBottom: 2,
+  },
+  suitableContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  suitableText: {
+    fontSize: 12,
+    color: '#6b7280',
     marginLeft: 4,
+    fontWeight: '500',
   },
-  ratingBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
+  priceContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
   },
-  ratingText: {
-    color: '#fff',
-    fontSize: 10,
+  originalPrice: {
+    fontSize: 12,
+    color: '#9ca3af',
+    textDecorationLine: 'line-through',
+    marginRight: 8,
+  },
+  salePrice: {
+    fontSize: 16,
+    color: '#ef4444',
     fontWeight: 'bold',
   },
-  releaseDate: {
-    fontSize: 11,
+  reviewContainer: {
+    alignItems: 'flex-end',
+  },
+  reviewText: {
+    fontSize: 10,
     color: '#9ca3af',
   },
 
