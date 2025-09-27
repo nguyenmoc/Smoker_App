@@ -91,12 +91,7 @@ export default function ProfileScreen() {
 
   const pickImage = useCallback(async (type: 'avatar' | 'cover') => {
     try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Lỗi', 'Cần quyền truy cập thư viện ảnh');
-        return;
-      }
-
+      // ImagePicker sẽ tự động xử lý quyền truy cập
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,

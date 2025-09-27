@@ -95,40 +95,21 @@ export default function HomeScreen() {
   const [posts, setPosts] = useState<Post[]>(initialPosts);
   const scrollY = useRef(new Animated.Value(0)).current;
 
-  // Request permissions
-  const requestPermissions = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert(
-        'Quyền truy cập bị từ chối',
-        'Cần quyền truy cập thư viện ảnh để chọn ảnh.'
-      );
-      return false;
-    }
-    return true;
-  };
-
   // Pick images from gallery
   const pickImage = useCallback(async () => {
-    console.log('Opening image picker...');
-
-    const hasPermission = await requestPermissions();
-    if (!hasPermission) return;
-
     try {
+      // ImagePicker will handle permissions automatically
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsMultipleSelection: true,
         quality: 0.8,
         aspect: [4, 3],
-        selectionLimit: 5, // Giới hạn 5 ảnh
+        selectionLimit: 5,
       });
 
       if (!result.canceled) {
         const imageUris = result.assets.map(asset => asset.uri);
         setSelectedImages(prev => [...prev, ...imageUris]);
-
-        // Mở BottomSheet nếu chưa mở
         bottomSheetRef.current?.snapToIndex(1);
       }
     } catch (error) {
