@@ -1,15 +1,13 @@
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useNotifications } from '@/hooks/useNotifications';
 import { Tabs } from 'expo-router';
-import React, { useState } from 'react';
+import React from 'react';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
   const activeColor = '#2563eb';
   const inactiveColor = '#6b7280';
-
-  const [unreadCount] = useState<number>(10);
+  const { unreadCount } = useNotifications();
 
   return (
     <Tabs

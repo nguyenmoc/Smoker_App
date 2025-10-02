@@ -1,10 +1,10 @@
 import AnimatedHeader from '@/components/ui/AnimatedHeader';
-import { Notification, notificationsData } from '@/constants/notiData';
+import { Notification } from '@/constants/notiData';
+import { useNotifications } from '@/hooks/useNotifications';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useRef, useState } from 'react';
 import {
-  Alert,
   Animated,
   FlatList,
   Image,
@@ -15,7 +15,9 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 export default function NotificationScreen() {
-  const [notifications, setNotifications] = useState<Notification[]>(notificationsData);
+  // const [notifications, setNotifications] = useState<Notification[]>(notificationsData);
+  const { notifications, unreadCount, isLoading, error, markAsRead, markAllAsRead, clearNotifications, refresh } =
+    useNotifications();
   const scrollY = useRef(new Animated.Value(0)).current;
   const [refreshing, setRefreshing] = useState(false);
   const insets = useSafeAreaInsets();
@@ -54,24 +56,24 @@ export default function NotificationScreen() {
     }
   };
 
-  // Mark notification as read
-  const markAsRead = useCallback((id: string) => {
-    setNotifications(prev =>
-      prev.map(notification =>
-        notification.id === id
-          ? { ...notification, isRead: true }
-          : notification
-      )
-    );
-  }, []);
+  // // Mark notification as read
+  // const markAsRead = useCallback((id: string) => {
+  //   setNotifications(prev =>
+  //     prev.map(notification =>
+  //       notification.id === id
+  //         ? { ...notification, isRead: true }
+  //         : notification
+  //     )
+  //   );
+  // }, []);
 
-  // Mark all as read
-  const markAllAsRead = useCallback(() => {
-    setNotifications(prev =>
-      prev.map(notification => ({ ...notification, isRead: true }))
-    );
-    Alert.alert('Thành công', 'Đã đánh dấu tất cả là đã đọc');
-  }, []);
+  // // Mark all as read
+  // const markAllAsRead = useCallback(() => {
+  //   setNotifications(prev =>
+  //     prev.map(notification => ({ ...notification, isRead: true }))
+  //   );
+  //   Alert.alert('Thành công', 'Đã đánh dấu tất cả là đã đọc');
+  // }, []);
 
   // Handle notification press
   const handleNotificationPress = useCallback((notification: Notification) => {
@@ -86,7 +88,7 @@ export default function NotificationScreen() {
   }, [markAsRead]);
 
   // Get unread count
-  const unreadCount = notifications.filter(n => !n.isRead).length;
+  // const unreadCount = notifications.filter(n => !n.isRead).length;
 
   const renderListEmpty = () => (
     <View style={styles.emptyContainer}>
