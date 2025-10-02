@@ -9,6 +9,10 @@ export interface User {
   following: number;
   posts: number;
   isFollowing?: boolean;
+  website?: string;
+  tiktok?: string;
+  facebook?: string;
+  instagram?: string;
 }
 
 export interface Comment {
@@ -61,6 +65,10 @@ export const mockUsers: User[] = [
     following: 456,
     posts: 127,
     isFollowing: false,
+    website: 'djmiketran.com',
+    tiktok: '@djmiketran',
+    facebook: 'djmiketran.official',
+    instagram: '@djmike.official',
   },
   {
     id: '2',
@@ -73,6 +81,10 @@ export const mockUsers: User[] = [
     following: 534,
     posts: 89,
     isFollowing: true,
+    website: 'djmiketran.com',
+    tiktok: '@djmiketran',
+    facebook: 'djmiketran.official',
+    instagram: '@djmike.official',
   },
   {
     id: '3',
@@ -85,6 +97,10 @@ export const mockUsers: User[] = [
     following: 823,
     posts: 156,
     isFollowing: false,
+    website: 'djmiketran.com',
+    tiktok: '@djmiketran',
+    facebook: 'djmiketran.official',
+    instagram: '@djmike.official',
   },
   {
     id: '4',
@@ -97,6 +113,10 @@ export const mockUsers: User[] = [
     following: 289,
     posts: 64,
     isFollowing: false,
+    website: 'djmiketran.com',
+    tiktok: '@djmiketran',
+    facebook: 'djmiketran.official',
+    instagram: '@djmike.official',
   },
   {
     id: '10',
@@ -109,6 +129,10 @@ export const mockUsers: User[] = [
     following: 187,
     posts: 28,
     isFollowing: false,
+    website: 'djmiketran.com',
+    tiktok: '@djmiketran',
+    facebook: 'djmiketran.official',
+    instagram: '@djmike.official',
   },
 ];
 

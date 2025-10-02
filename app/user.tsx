@@ -5,10 +5,12 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useRef } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Animated,
   Dimensions,
   FlatList,
   Image,
+  Linking,
   StatusBar,
   StyleSheet,
   Text,
@@ -47,6 +49,40 @@ export default function UserProfileScreen() {
   const handleFollowPress = () => {
     followUser();
   };
+
+  const handleSocialLink = (platform: string, username?: string) => {
+    if (!username || username === 'N/A') {
+      Alert.alert('Thông báo', 'Người dùng chưa cập nhật thông tin này');
+      return;
+    }
+
+    let url = '';
+    switch (platform) {
+      case 'tiktok':
+        url = `https://www.tiktok.com/${username.replace('@', '')}`;
+        break;
+      case 'facebook':
+        url = username.startsWith('http') ? username : `https://facebook.com/${username}`;
+        break;
+      case 'instagram':
+        url = `https://instagram.com/${username.replace('@', '')}`;
+        break;
+      case 'website':
+        url = username.startsWith('http') ? username : `https://${username}`;
+        break;
+      default:
+        return;
+    }
+
+    Linking.canOpenURL(url).then(supported => {
+      if (supported) {
+        Linking.openURL(url);
+      } else {
+        Alert.alert('Lỗi', 'Không thể mở liên kết này');
+      }
+    });
+  };
+
 
   const renderPostItem = ({ item }: { item: Post }) => (
     <TouchableOpacity
@@ -103,6 +139,49 @@ export default function UserProfileScreen() {
             <Text style={styles.userBio}>{user.bio}</Text>
           )}
         </View>
+
+        {/*social media link*/}
+        {(user?.website || user?.tiktok || user?.facebook || user?.instagram) && (
+          <View style={styles.socialLinksContainer}>
+            <View style={styles.socialIcons}>
+              {user?.tiktok && user.tiktok !== 'N/A' && (
+                <TouchableOpacity
+                  style={styles.socialIconButton}
+                  onPress={() => handleSocialLink('tiktok', user.tiktok)}
+                >
+                  <Ionicons name="logo-tiktok" size={24} color="#000" />
+                </TouchableOpacity>
+              )}
+
+              {user?.facebook && user.facebook !== 'N/A' && (
+                <TouchableOpacity
+                  style={styles.socialIconButton}
+                  onPress={() => handleSocialLink('facebook', user.facebook)}
+                >
+                  <Ionicons name="logo-facebook" size={24} color="#1877f2" />
+                </TouchableOpacity>
+              )}
+
+              {user?.instagram && user.instagram !== 'N/A' && (
+                <TouchableOpacity
+                  style={styles.socialIconButton}
+                  onPress={() => handleSocialLink('instagram', user.instagram)}
+                >
+                  <Ionicons name="logo-instagram" size={24} color="#e4405f" />
+                </TouchableOpacity>
+              )}
+
+              {user?.website && user.website !== 'N/A' && (
+                <TouchableOpacity
+                  style={styles.socialIconButton}
+                  onPress={() => handleSocialLink('website', user.website)}
+                >
+                  <Ionicons name="globe-outline" size={24} color="#2563eb" />
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        )}
 
         <View style={styles.statsContainer}>
           <View style={styles.statItem}>
@@ -484,5 +563,40 @@ const styles = StyleSheet.create({
     marginTop: 8,
     textAlign: 'center',
     lineHeight: 20,
+  },
+  socialLinksContainer: {
+    marginBottom: 16,
+    paddingHorizontal: 8,
+  },
+  socialLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#eff6ff',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  socialLinkText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: '#2563eb',
+    fontWeight: '500',
+    flex: 1,
+  },
+  socialIcons: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 16,
+  },
+  socialIconButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#f3f4f6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
   },
 });
