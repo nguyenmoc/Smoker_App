@@ -51,6 +51,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="table"
         options={{
+          href: true ? '/table' : null, // chỉ show với role quán bar
           title: 'Quản lý',
           tabBarIcon: ({ color }: { color: string }) => (
             <IconSymbol size={28} name="table.fill" color={color} />

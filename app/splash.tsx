@@ -7,7 +7,7 @@ export default function SplashScreen() {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      const isLoggedIn = false; 
+      const isLoggedIn = true; 
       if (isLoggedIn) {
         router.replace('/(tabs)');
       } else {

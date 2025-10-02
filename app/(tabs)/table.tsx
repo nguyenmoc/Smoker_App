@@ -1,9 +1,10 @@
 import AnimatedHeader from '@/components/ui/AnimatedHeader';
+import { Table } from '@/constants/tableData';
+import { useTableManagement } from '@/hooks/useTableManagement';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useRef, useState } from 'react';
 import {
-  Alert,
   Animated,
   KeyboardAvoidingView,
   Modal,
@@ -15,40 +16,16 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-interface Table {
-  id: string;
-  number: number;
-  type: 'vip' | 'luxury' | 'thường';
-  status: 'trống' | 'đang sử dụng' | 'đã đặt';
-  capacity: number;
-}
-
-const tableTypes = [
-  { value: 'thường', label: 'Bàn Thường', color: '#6b7280' },
-  { value: 'vip', label: 'Bàn VIP', color: '#f59e0b' },
-  { value: 'luxury', label: 'Bàn Luxury', color: '#8b5cf6' },
-];
-
-const initialTables: Table[] = [
-  { id: '1', number: 1, type: 'thường', status: 'trống', capacity: 4 },
-  { id: '2', number: 2, type: 'vip', status: 'đang sử dụng', capacity: 6 },
-  { id: '3', number: 3, type: 'luxury', status: 'đã đặt', capacity: 8 },
-  { id: '4', number: 1, type: 'thường', status: 'trống', capacity: 4 },
-  { id: '5', number: 2, type: 'vip', status: 'đang sử dụng', capacity: 6 },
-  { id: '6', number: 3, type: 'luxury', status: 'đã đặt', capacity: 8 },
-  { id: '7', number: 1, type: 'thường', status: 'trống', capacity: 4 },
-  { id: '8', number: 2, type: 'vip', status: 'đang sử dụng', capacity: 6 },
-  { id: '9', number: 3, type: 'luxury', status: 'đã đặt', capacity: 8 },
-];
-
 export default function TableManagementScreen() {
   const router = useRouter();
-  const [tables, setTables] = useState<Table[]>(initialTables);
+  const { tables, createTable, refresh, loading } = useTableManagement();
   const [tableModalVisible, setTableModalVisible] = useState(false);
+  const [detailModalVisible, setDetailModalVisible] = useState(false);
+  const [selectedTable, setSelectedTable] = useState<Table | null>(null);
   const [newTable, setNewTable] = useState({
     number: '',
     type: 'thường' as 'vip' | 'luxury' | 'thường',
@@ -63,57 +40,73 @@ export default function TableManagementScreen() {
     extrapolate: 'clamp',
   });
 
-  const [refreshing, setRefreshing] = useState(false);
-
-  const onRefresh = () => {
-    setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 2000);
+  const handleCreateTable = () => {
+    const success = createTable(newTable);
+    if (success) {
+      setTableModalVisible(false);
+      setNewTable({ number: '', type: 'thường', capacity: '' });
+    }
   };
 
-  const createTable = () => {
-    if (!newTable.number || !newTable.capacity) {
-      Alert.alert('Lỗi', 'Vui lòng điền đầy đủ thông tin');
-      return;
-    }
+  const handleTablePress = (table: Table) => {
+    setSelectedTable(table);
+    setDetailModalVisible(true);
+  };
 
-    const tableExists = tables.find(table => table.number === parseInt(newTable.number));
-    if (tableExists) {
-      Alert.alert('Lỗi', 'Số bàn đã tồn tại');
-      return;
-    }
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('vi-VN', {
+      style: 'currency',
+      currency: 'VND',
+    }).format(amount);
+  };
 
-    const table: Table = {
-      id: Date.now().toString(),
-      number: parseInt(newTable.number),
-      type: newTable.type,
-      capacity: parseInt(newTable.capacity),
-      status: 'trống',
-    };
-
-    setTables(prev => [...prev, table].sort((a, b) => a.number - b.number));
-    setTableModalVisible(false);
-    Alert.alert('Thành công', 'Đã tạo bàn mới');
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
   };
 
   const TableItem = ({ table }: { table: Table }) => {
-    const typeConfig = tableTypes.find(t => t.value === table.type);
+    const typeConfig = {
+      'thường': { label: 'Bàn Thường', color: '#6b7280' },
+      'vip': { label: 'Bàn VIP', color: '#f59e0b' },
+      'luxury': { label: 'Bàn Luxury', color: '#8b5cf6' },
+    }[table.type];
+
     return (
-      <View style={styles.tableItem}>
+      <TouchableOpacity 
+        style={styles.tableItem}
+        onPress={() => handleTablePress(table)}
+        activeOpacity={0.7}
+      >
         <View style={styles.tableItemLeft}>
-          <View style={[styles.tableTypeIndicator, { backgroundColor: typeConfig?.color }]} />
-          <View>
-            <Text style={styles.tableNumber}>Bàn {table.number}</Text>
-            <Text style={styles.tableType}>{typeConfig?.label} - {table.capacity} người</Text>
-            <Text style={[styles.tableStatus,
-            table.status === 'trống' && { color: '#10b981' },
-            table.status === 'đang sử dụng' && { color: '#ef4444' },
-            table.status === 'đã đặt' && { color: '#f59e0b' }
-            ]}>
-              {table.status.charAt(0).toUpperCase() + table.status.slice(1)}
-            </Text>
+          <View style={[styles.tableTypeIndicator, { backgroundColor: typeConfig.color }]} />
+          <View style={styles.tableInfo}>
+            <View style={styles.tableHeader}>
+              <Text style={styles.tableNumber}>Bàn {table.number}</Text>
+              <View style={[
+                styles.statusBadge,
+                table.status === 'trống' && styles.statusEmpty,
+                table.status === 'đang sử dụng' && styles.statusOccupied,
+                table.status === 'đã đặt' && styles.statusBooked,
+              ]}>
+                <Text style={styles.statusText}>
+                  {table.status.toUpperCase()}
+                </Text>
+              </View>
+            </View>
+            <Text style={styles.tableType}>{typeConfig.label} • {table.capacity} người</Text>
+            {table.customer && (
+              <Text style={styles.customerName}>👤 {table.customer.name}</Text>
+            )}
+            {table.currentOrder && (
+              <Text style={styles.orderTotal}>
+                💰 {formatCurrency(table.currentOrder.total)}
+              </Text>
+            )}
           </View>
         </View>
-      </View>
+        <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+      </TouchableOpacity>
     );
   };
 
@@ -128,10 +121,26 @@ export default function TableManagementScreen() {
         headerTranslateY={headerTranslateY}
       />
 
+      {/* Nút xem thu nhập */}
+      <TouchableOpacity 
+        style={styles.revenueButton}
+        onPress={() => router.push('/revenue')}
+      >
+        <Ionicons name="bar-chart" size={20} color="#fff" />
+        <Text style={styles.revenueButtonText}>Xem thu nhập</Text>
+      </TouchableOpacity>
+
       <Animated.ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 120, marginTop: 40 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        contentContainerStyle={{ paddingBottom: 120, paddingTop: 100 }}
+        refreshControl={
+          <RefreshControl 
+            refreshing={loading} 
+            onRefresh={refresh}
+            colors={['#2563eb']}
+            tintColor="#2563eb"
+          />
+        }
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
           { useNativeDriver: true }
@@ -142,88 +151,202 @@ export default function TableManagementScreen() {
           <View style={styles.emptyState}>
             <Ionicons name="restaurant-outline" size={48} color="#9ca3af" />
             <Text style={styles.emptyStateText}>Chưa có bàn nào</Text>
-            <Text style={styles.emptyStateSubtext}>Nhấn "Thêm bàn" để thêm bàn mới</Text>
+            <Text style={styles.emptyStateSubtext}>Nhấn + để thêm bàn mới</Text>
           </View>
         ) : (
           tables.map((table) => (
             <TableItem key={table.id} table={table} />
           ))
         )}
+      </Animated.ScrollView>
 
-        {/* Modal để thêm bàn */}
-        <Modal
-          visible={tableModalVisible}
-          animationType="slide"
-          transparent={true}
-          onRequestClose={() => setTableModalVisible(false)}
+      {/* Modal thêm bàn */}
+      <Modal
+        visible={tableModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setTableModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
-          <KeyboardAvoidingView
-            style={styles.modalOverlay}
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-          >
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <TouchableOpacity onPress={() => setTableModalVisible(false)}>
-                  <Text style={styles.modalCancel}>Hủy</Text>
-                </TouchableOpacity>
-                <Text style={styles.modalTitle}>Thêm bàn mới</Text>
-                <TouchableOpacity onPress={createTable}>
-                  <Text style={styles.modalSave}>Tạo</Text>
-                </TouchableOpacity>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <TouchableOpacity onPress={() => setTableModalVisible(false)}>
+                <Text style={styles.modalCancel}>Hủy</Text>
+              </TouchableOpacity>
+              <Text style={styles.modalTitle}>Thêm bàn mới</Text>
+              <TouchableOpacity onPress={handleCreateTable}>
+                <Text style={styles.modalSave}>Tạo</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Số bàn</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={newTable.number}
+                  onChangeText={(text) => setNewTable(prev => ({ ...prev, number: text }))}
+                  placeholder="Nhập số bàn"
+                  keyboardType="numeric"
+                />
               </View>
 
-              <ScrollView style={styles.modalScrollView} showsVerticalScrollIndicator={false}>
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Số bàn</Text>
-                  <TextInput
-                    style={styles.modalInput}
-                    value={newTable.number}
-                    onChangeText={(text) => setNewTable(prev => ({ ...prev, number: text }))}
-                    placeholder="Nhập số bàn"
-                    keyboardType="numeric"
-                  />
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Loại bàn</Text>
+                <View style={styles.typeSelector}>
+                  {(['thường', 'vip', 'luxury'] as const).map((type) => (
+                    <TouchableOpacity
+                      key={type}
+                      style={[
+                        styles.typeOption,
+                        newTable.type === type && styles.typeOptionSelected
+                      ]}
+                      onPress={() => setNewTable(prev => ({ ...prev, type }))}
+                    >
+                      <Text style={[
+                        styles.typeLabel,
+                        newTable.type === type && styles.typeLabelSelected
+                      ]}>
+                        {type === 'thường' ? 'Thường' : type === 'vip' ? 'VIP' : 'Luxury'}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
                 </View>
+              </View>
 
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Loại bàn</Text>
-                  <View style={styles.typeSelector}>
-                    {tableTypes.map((type) => (
-                      <TouchableOpacity
-                        key={type.value}
-                        style={[
-                          styles.typeOption,
-                          newTable.type === type.value && styles.typeOptionSelected
-                        ]}
-                        onPress={() => setNewTable(prev => ({ ...prev, type: type.value as any }))}
-                      >
-                        <View style={[styles.typeIndicator, { backgroundColor: type.color }]} />
-                        <Text style={[
-                          styles.typeLabel,
-                          newTable.type === type.value && styles.typeLabelSelected
-                        ]}>
-                          {type.label}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </View>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Sức chứa</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={newTable.capacity}
+                  onChangeText={(text) => setNewTable(prev => ({ ...prev, capacity: text }))}
+                  placeholder="Nhập số người"
+                  keyboardType="numeric"
+                />
+              </View>
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
 
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Sức chứa</Text>
-                  <TextInput
-                    style={styles.modalInput}
-                    value={newTable.capacity}
-                    onChangeText={(text) => setNewTable(prev => ({ ...prev, capacity: text }))}
-                    placeholder="Nhập số người"
-                    keyboardType="numeric"
-                  />
-                </View>
-              </ScrollView>
+      {/* Modal chi tiết bàn */}
+      <Modal
+        visible={detailModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setDetailModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.detailModalContent}>
+            <View style={styles.modalHeader}>
+              <TouchableOpacity onPress={() => setDetailModalVisible(false)}>
+                <Ionicons name="close" size={24} color="#6b7280" />
+              </TouchableOpacity>
+              <Text style={styles.modalTitle}>Chi tiết bàn {selectedTable?.number}</Text>
+              <View style={{ width: 24 }} />
             </View>
-          </KeyboardAvoidingView>
-        </Modal>
-      </Animated.ScrollView>
+
+            <ScrollView style={styles.detailBody} showsVerticalScrollIndicator={false}>
+              {selectedTable && (
+                <>
+                  {/* Thông tin bàn */}
+                  <View style={styles.detailSection}>
+                    <Text style={styles.sectionTitle}>Thông tin bàn</Text>
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>Loại bàn:</Text>
+                      <Text style={styles.detailValue}>
+                        {selectedTable.type === 'thường' ? 'Bàn Thường' : 
+                         selectedTable.type === 'vip' ? 'Bàn VIP' : 'Bàn Luxury'}
+                      </Text>
+                    </View>
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>Sức chứa:</Text>
+                      <Text style={styles.detailValue}>{selectedTable.capacity} người</Text>
+                    </View>
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>Trạng thái:</Text>
+                      <Text style={[
+                        styles.detailValue,
+                        selectedTable.status === 'trống' && { color: '#10b981' },
+                        selectedTable.status === 'đang sử dụng' && { color: '#ef4444' },
+                        selectedTable.status === 'đã đặt' && { color: '#f59e0b' },
+                      ]}>
+                        {selectedTable.status}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Thông tin khách hàng */}
+                  {selectedTable.customer && (
+                    <View style={styles.detailSection}>
+                      <Text style={styles.sectionTitle}>Thông tin khách hàng</Text>
+                      <View style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>Tên:</Text>
+                        <Text style={styles.detailValue}>{selectedTable.customer.name}</Text>
+                      </View>
+                      <View style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>SĐT:</Text>
+                        <Text style={styles.detailValue}>{selectedTable.customer.phone}</Text>
+                      </View>
+                      {selectedTable.customer.bookingTime && (
+                        <View style={styles.detailRow}>
+                          <Text style={styles.detailLabel}>Giờ đặt:</Text>
+                          <Text style={styles.detailValue}>
+                            {formatTime(selectedTable.customer.bookingTime)}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                  )}
+
+                  {/* Chi tiết order */}
+                  {selectedTable.currentOrder && (
+                    <View style={styles.detailSection}>
+                      <Text style={styles.sectionTitle}>Chi tiết order</Text>
+                      <View style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>Giờ vào:</Text>
+                        <Text style={styles.detailValue}>
+                          {formatTime(selectedTable.currentOrder.startTime)}
+                        </Text>
+                      </View>
+                      
+                      <View style={styles.orderItems}>
+                        {selectedTable.currentOrder.items.map((item, index) => (
+                          <View key={index} style={styles.orderItem}>
+                            <Text style={styles.orderItemName}>
+                              {item.name} x{item.quantity}
+                            </Text>
+                            <Text style={styles.orderItemPrice}>
+                              {formatCurrency(item.price * item.quantity)}
+                            </Text>
+                          </View>
+                        ))}
+                      </View>
+
+                      <View style={styles.totalRow}>
+                        <Text style={styles.totalLabel}>Tổng cộng:</Text>
+                        <Text style={styles.totalValue}>
+                          {formatCurrency(selectedTable.currentOrder.total)}
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+
+                  {selectedTable.status === 'trống' && (
+                    <View style={styles.emptyDetail}>
+                      <Ionicons name="checkmark-circle-outline" size={48} color="#10b981" />
+                      <Text style={styles.emptyDetailText}>Bàn đang trống</Text>
+                    </View>
+                  )}
+                </>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -233,42 +356,25 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f9fafb',
   },
-  scrollView: {
-    flex: 1,
-  },
-  header: {
+  revenueButton: {
+    position: 'absolute',
+    top: 120,
+    right: 16,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    backgroundColor: '#10b981',
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    paddingVertical: 10,
+    borderRadius: 20,
+    zIndex: 5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.2,
     shadowRadius: 4,
-    elevation: 3,
+    elevation: 5,
   },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1f2937',
-    letterSpacing: 0.5,
-  },
-  addButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#eff6ff',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#2563eb',
-  },
-  addButtonText: {
-    color: '#2563eb',
+  revenueButtonText: {
+    color: '#fff',
     fontSize: 14,
     fontWeight: '600',
     marginLeft: 6,
@@ -276,17 +382,16 @@ const styles = StyleSheet.create({
   tableItem: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
     backgroundColor: '#fff',
-    borderRadius: 8,
-    marginHorizontal: 8,
-    marginVertical: 4,
+    borderRadius: 12,
+    marginHorizontal: 16,
+    marginVertical: 6,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
   },
@@ -296,33 +401,63 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   tableTypeIndicator: {
-    width: 6,
-    height: 40,
-    borderRadius: 3,
+    width: 4,
+    height: 60,
+    borderRadius: 2,
     marginRight: 12,
+  },
+  tableInfo: {
+    flex: 1,
+  },
+  tableHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
   },
   tableNumber: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#1f2937',
+    fontWeight: '700',
+    color: '#111827',
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  statusEmpty: {
+    backgroundColor: '#d1fae5',
+  },
+  statusOccupied: {
+    backgroundColor: '#fee2e2',
+  },
+  statusBooked: {
+    backgroundColor: '#fef3c7',
+  },
+  statusText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#374151',
   },
   tableType: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#6b7280',
-    marginTop: 4,
+    marginBottom: 4,
   },
-  tableStatus: {
-    fontSize: 12,
+  customerName: {
+    fontSize: 13,
+    color: '#2563eb',
+    marginTop: 2,
+  },
+  orderTotal: {
+    fontSize: 14,
     fontWeight: '600',
-    marginTop: 4,
-    textTransform: 'uppercase',
+    color: '#10b981',
+    marginTop: 2,
   },
   emptyState: {
     alignItems: 'center',
-    paddingVertical: 48,
-    paddingHorizontal: 16,
-    opacity: 0.8,
-    marginTop: 30
+    paddingVertical: 60,
   },
   emptyStateText: {
     fontSize: 16,
@@ -333,26 +468,24 @@ const styles = StyleSheet.create({
   emptyStateSubtext: {
     fontSize: 14,
     color: '#9ca3af',
-    textAlign: 'center',
     marginTop: 6,
-    lineHeight: 20,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
   },
   modalContent: {
     backgroundColor: '#fff',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '70%',
+  },
+  detailModalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     maxHeight: '80%',
-    minHeight: 400,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 5,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -362,30 +495,26 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
-    backgroundColor: '#f9fafb',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
   },
   modalCancel: {
     fontSize: 16,
     color: '#6b7280',
-    fontWeight: '500',
-    padding: 8,
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1f2937',
-    letterSpacing: 0.3,
+    color: '#111827',
   },
   modalSave: {
     fontSize: 16,
     color: '#2563eb',
     fontWeight: '600',
-    padding: 8,
   },
-  modalScrollView: {
-    flex: 1,
+  modalBody: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+  },
+  detailBody: {
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: 20,
@@ -402,46 +531,109 @@ const styles = StyleSheet.create({
   modalInput: {
     borderWidth: 1,
     borderColor: '#d1d5db',
-    borderRadius: 10,
+    borderRadius: 8,
     padding: 12,
     fontSize: 16,
-    color: '#1f2937',
+    color: '#111827',
     backgroundColor: '#f9fafb',
   },
   typeSelector: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    gap: 8,
   },
   typeOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
+    flex: 1,
+    paddingVertical: 12,
     borderWidth: 1,
     borderColor: '#d1d5db',
     borderRadius: 8,
+    alignItems: 'center',
     backgroundColor: '#fff',
-    marginRight: 8,
-    marginBottom: 8,
-    minWidth: 100,
   },
   typeOptionSelected: {
     borderColor: '#2563eb',
     backgroundColor: '#eff6ff',
   },
-  typeIndicator: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginRight: 8,
-  },
   typeLabel: {
     fontSize: 14,
-    color: '#1f2937',
+    color: '#374151',
     fontWeight: '500',
   },
   typeLabelSelected: {
     color: '#2563eb',
     fontWeight: '600',
+  },
+  detailSection: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 12,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
+  },
+  detailLabel: {
+    fontSize: 14,
+    color: '#6b7280',
+  },
+  detailValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  orderItems: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+  },
+  orderItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 6,
+  },
+  orderItemName: {
+    fontSize: 14,
+    color: '#374151',
+  },
+  orderItemPrice: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  totalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 2,
+    borderTopColor: '#e5e7eb',
+  },
+  totalLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  totalValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#10b981',
+  },
+  emptyDetail: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  emptyDetailText: {
+    fontSize: 16,
+    color: '#10b981',
+    marginTop: 12,
+    fontWeight: '500',
   },
 });
