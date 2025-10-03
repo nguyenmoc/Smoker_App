@@ -48,7 +48,23 @@ class FeedApiService {
     return 'your-auth-token-here';
   }
 
-  // Feed APIs
+  async getCurrentUserId(): Promise<ApiResponse<string>> {
+    try {
+      const response = await this.makeRequest<{ userId: string }>('/auth/current-user');
+      if (response.success && response.data) {
+        return { success: true, data: response.data.userId, message: 'Lấy user ID thành công' };
+      }
+      return { success: false, message: 'Không thể lấy user ID', error: 'No user ID found' };
+    } catch (error) {
+      console.error('Error getting current user ID:', error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  }
+
   async getFeedPosts(page: number = 1, limit: number = 10): Promise<ApiResponse<Post[]>> {
     return this.makeRequest<Post[]>(`/feed?page=${page}&limit=${limit}`);
   }
@@ -70,6 +86,19 @@ class FeedApiService {
     return this.makeRequest<Post>(`/posts/${postId}`);
   }
 
+  async updatePost(postId: string, postData: { content: string }): Promise<ApiResponse<Post>> {
+    return this.makeRequest<Post>(`/posts/${postId}`, {
+      method: 'PUT',
+      body: JSON.stringify(postData),
+    });
+  }
+
+  async deletePost(postId: string): Promise<ApiResponse<null>> {
+    return this.makeRequest<null>(`/posts/${postId}`, {
+      method: 'DELETE',
+    });
+  }
+
   async getPostComments(postId: string): Promise<ApiResponse<Comment[]>> {
     return this.makeRequest<Comment[]>(`/posts/${postId}/comments`);
   }
@@ -87,7 +116,6 @@ class FeedApiService {
     });
   }
 
-  // User APIs
   async getUserProfile(userId: string): Promise<ApiResponse<User>> {
     return this.makeRequest<User>(`/users/${userId}`);
   }
@@ -102,7 +130,6 @@ class FeedApiService {
     });
   }
 
-  // Upload image
   async uploadImage(imageUri: string): Promise<ApiResponse<{ imageUrl: string }>> {
     const formData = new FormData();
     formData.append('image', {

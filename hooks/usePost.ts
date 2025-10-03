@@ -1,21 +1,23 @@
 import { Comment, CreateCommentData, mockComments, mockPosts, Post } from '@/constants/feedData';
+import { feedApi } from '@/services/feedApi';
 import { useCallback, useEffect, useState } from 'react';
-import { feedApi } from '../services/feedApi';
 
 export const usePostDetails = (postId: string) => {
   const [post, setPost] = useState<Post | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   const fetchPostDetails = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const [postResponse, commentsResponse] = await Promise.all([
+      const [postResponse, commentsResponse, userResponse] = await Promise.all([
         feedApi.getPostDetails(postId),
-        feedApi.getPostComments(postId)
+        feedApi.getPostComments(postId),
+        feedApi.getCurrentUserId(),
       ]);
       
       if (postResponse.success && postResponse.data) {
@@ -36,12 +38,19 @@ export const usePostDetails = (postId: string) => {
         // Fallback to mock comments
         setComments(mockComments);
       }
+
+      if (userResponse.success && userResponse.data) {
+        setCurrentUserId(userResponse.data);
+      } else {
+        setCurrentUserId('1'); // Fallback user ID for mock data
+      }
     } catch (err) {
       console.error('Error fetching post details:', err);
       const mockPost = mockPosts.find(p => p.id === postId);
       if (mockPost) {
         setPost(mockPost);
         setComments(mockComments);
+        setCurrentUserId('1'); // Fallback user ID
       } else {
         setError('Không thể tải bài viết');
       }
@@ -62,9 +71,9 @@ export const usePostDetails = (postId: string) => {
         // Fallback to local creation
         const newComment: Comment = {
           id: Date.now().toString(),
-          userId: '10',
+          userId: currentUserId || '10',
           user: {
-            id: '10',
+            id: currentUserId || '10',
             name: 'Bạn',
             username: '@me',
             avatar: 'https://i.pravatar.cc/100?img=10',
@@ -89,15 +98,14 @@ export const usePostDetails = (postId: string) => {
   };
 
   const likeComment = async (commentId: string): Promise<void> => {
-    // Optimistic update
     setComments(prevComments =>
       prevComments.map(comment =>
         comment.id === commentId
           ? {
-            ...comment,
-            isLiked: !comment.isLiked,
-            likes: comment.isLiked ? comment.likes - 1 : comment.likes + 1
-          }
+              ...comment,
+              isLiked: !comment.isLiked,
+              likes: comment.isLiked ? comment.likes - 1 : comment.likes + 1,
+            }
           : comment
       )
     );
@@ -111,10 +119,10 @@ export const usePostDetails = (postId: string) => {
           prevComments.map(comment =>
             comment.id === commentId
               ? {
-                ...comment,
-                isLiked: !comment.isLiked,
-                likes: comment.isLiked ? comment.likes - 1 : comment.likes + 1
-              }
+                  ...comment,
+                  isLiked: !comment.isLiked,
+                  likes: comment.isLiked ? comment.likes - 1 : comment.likes + 1,
+                }
               : comment
           )
         );
@@ -124,11 +132,9 @@ export const usePostDetails = (postId: string) => {
     }
   };
 
-  // Thêm function likePost
   const likePost = async (): Promise<void> => {
     if (!post) return;
 
-    // Optimistic update
     setPost(prevPost => {
       if (!prevPost) return prevPost;
       return {
@@ -142,7 +148,6 @@ export const usePostDetails = (postId: string) => {
       const response = await feedApi.likePost(postId);
       
       if (!response.success) {
-        // Revert nếu API fail
         setPost(prevPost => {
           if (!prevPost) return prevPost;
           return {
@@ -154,7 +159,6 @@ export const usePostDetails = (postId: string) => {
       }
     } catch (err) {
       console.error('Error liking post:', err);
-      // Revert nếu có lỗi
       setPost(prevPost => {
         if (!prevPost) return prevPost;
         return {
@@ -163,6 +167,36 @@ export const usePostDetails = (postId: string) => {
           likes: prevPost.isLiked ? prevPost.likes - 1 : prevPost.likes + 1,
         };
       });
+    }
+  };
+
+  const updatePost = async (postId: string, data: { content: string }): Promise<boolean> => {
+    try {
+      const response = await feedApi.updatePost(postId, data);
+      
+      if (response.success && response.data) {
+        setPost(prevPost => prevPost ? { ...prevPost, content: response.data!.content } : null);
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error('Error updating post:', err);
+      return false;
+    }
+  };
+
+  const deletePost = async (postId: string): Promise<boolean> => {
+    try {
+      const response = await feedApi.deletePost(postId);
+      
+      if (response.success) {
+        setPost(null);
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error('Error deleting post:', err);
+      return false;
     }
   };
 
@@ -175,9 +209,12 @@ export const usePostDetails = (postId: string) => {
     comments,
     loading,
     error,
+    currentUserId,
     fetchPostDetails,
     addComment,
     likeComment,
-    likePost, // Export function
+    likePost,
+    updatePost,
+    deletePost,
   };
 };
