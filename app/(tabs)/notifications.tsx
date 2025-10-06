@@ -5,15 +5,21 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Animated,
-  FlatList,
   Image,
+  RefreshControl,
+  FlatList as RNFlatList,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+
+// Bọc FlatList với Animated.createAnimatedComponent
+const AnimatedFlatList = Animated.createAnimatedComponent(RNFlatList);
+
 export default function NotificationScreen() {
   const { notifications, unreadCount, isLoading, error, markAsRead, markAllAsRead, clearNotifications, refresh } =
     useNotifications();
@@ -28,10 +34,12 @@ export default function NotificationScreen() {
     extrapolate: 'clamp',
   });
 
-  const onRefresh = () => {
+  // Refresh handler
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 2000);
-  };
+    await refresh(); // Gọi hàm refresh từ useNotifications
+    setRefreshing(false);
+  }, [refresh]);
 
   // Get icon based on notification type
   const getNotificationIcon = (type: Notification['type']) => {
@@ -56,10 +64,9 @@ export default function NotificationScreen() {
     if (!notification.isRead) {
       markAsRead(notification.id);
     }
-
-   router.push({
+    router.push({
       pathname: '/post',
-      params: { id: notification.user.id }
+      params: { id: notification.user.id },
     });
   }, [markAsRead]);
 
@@ -71,7 +78,7 @@ export default function NotificationScreen() {
         Khi có thông báo mới, chúng sẽ hiển thị ở đây
       </Text>
     </View>
-  )
+  );
 
   const renderNotification = ({ item }: { item: Notification }) => (
     <TouchableOpacity
@@ -104,30 +111,54 @@ export default function NotificationScreen() {
     </TouchableOpacity>
   );
 
+  // Loading UI
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.loadingContainer}>
+        <AnimatedHeader
+          title="Thông Báo"
+          headerTranslateY={headerTranslateY}
+        />
+        <ActivityIndicator size="large" color="#2563eb" />
+        <Text style={styles.loadingText}>Đang tải thông báo...</Text>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <AnimatedHeader
         title="Thông Báo"
-        iconName={unreadCount > 0 ? "checkmark-done-outline" : undefined}
+        iconName={unreadCount > 0 ? 'checkmark-done-outline' : undefined}
         onIconPress={unreadCount > 0 ? markAllAsRead : undefined}
         headerTranslateY={headerTranslateY}
       />
 
-      {/* Notifications List */}
-      <FlatList
+      {/* Notifications List with RefreshControl */}
+      <AnimatedFlatList
         data={notifications}
-        renderItem={renderNotification}
+        renderItem={renderNotification as any}
         keyExtractor={(item) => item.id}
         style={styles.list}
         showsVerticalScrollIndicator={false}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         ListEmptyComponent={renderListEmpty}
-        refreshing={refreshing}
-        onRefresh={onRefresh}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#2563eb']}
+            tintColor="#2563eb"
+          />
+        }
         contentContainerStyle={{
           paddingBottom: insets.bottom,
           paddingTop: 70,
         }}
+        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
+          useNativeDriver: true,
+        })}
+        scrollEventThrottle={16}
       />
     </SafeAreaView>
   );
@@ -137,6 +168,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f3f4f6',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f3f4f6',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#6b7280',
   },
   header: {
     flexDirection: 'row',
@@ -157,7 +199,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '700',
     color: '#111827',
-    fontFamily: 'System', // Use system font for better compatibility
+    fontFamily: 'System',
   },
   markAllButton: {
     paddingHorizontal: 12,
@@ -201,9 +243,9 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   unreadNotification: {
-    backgroundColor: '#fefce8', // Softer yellow for unread notifications
+    backgroundColor: '#fefce8',
     borderLeftWidth: 4,
-    borderLeftColor: '#3b82f6', // Blue accent for unread items
+    borderLeftColor: '#3b82f6',
   },
   notificationContent: {
     flexDirection: 'row',
