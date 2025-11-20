@@ -7,6 +7,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Animated,
   Dimensions,
@@ -59,6 +60,8 @@ export default function HomeScreen() {
     createPost,
     likePost,
     refresh,
+    loadMore,
+    hasMore
   } = useFeed();
 
 
@@ -111,7 +114,7 @@ export default function HomeScreen() {
   }, [postText, selectedImages, createPost, closeModal]);
 
   const handleLike = useCallback((postId: string) => {
-    // likePost(postId);
+    likePost(postId);
   }, [likePost]);
 
   const handleShare = async (post: Post) => {
@@ -141,7 +144,7 @@ export default function HomeScreen() {
     }
   };
 
-  const handleComment = useCallback((postId: string) => {    
+  const handleComment = useCallback((postId: string) => {
     router.push({
       pathname: '/post',
       params: { id: postId }
@@ -393,6 +396,18 @@ export default function HomeScreen() {
             tintColor="#2563eb"
           />
         }
+        onEndReached={() => {
+          if (!loading && hasMore) loadMore();
+        }}
+        onEndReachedThreshold={0.5} // khi scroll tới 50% cuối
+        ListFooterComponent={() => {
+          if (!loading) return null;
+          return (
+            <View style={{ padding: 12 }}>
+              <ActivityIndicator size="small" color="#2563eb" />
+            </View>
+          );
+        }}
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
           { useNativeDriver: true }

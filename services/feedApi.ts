@@ -75,8 +75,8 @@ export class FeedApiService {
     });
   }
 
-  async likePost(postId: string): Promise<ApiResponse<{ liked: boolean; likesCount: number }>> {
-    return this.makeRequest<{ liked: boolean; likesCount: number }>(`/posts/${postId}/like`, {
+  async likePost(postId: string): Promise<ApiResponse<{ liked: boolean; }>> {
+    return this.makeRequest<{ liked: boolean; }>(`/posts/${postId}/like`, {
       method: 'POST',
     });
   }

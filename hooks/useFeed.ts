@@ -94,53 +94,46 @@ export const useFeed = () => {
     }
   };
 
-  const likePost = async (postId: string): Promise<void> => {
-    // Optimistic update
-    // setPosts(prevPosts =>
-    //   prevPosts.map(post =>
-    //     post.id === postId
-    //       ? {
-    //         ...post,
-    //         isLiked: !post.isLiked,
-    //         likes: post.isLiked ? post.likes - 1 : post.likes + 1
-    //       }
-    //       : post
-    //   )
-    // );
-
-    try {
-      const response = await feedApi.likePost(postId);
-      
-      if (!response.success) {
-        // Revert optimistic update
-        setPosts(prevPosts =>
-          prevPosts.map(post =>
-            post.id === postId
-              ? {
-                ...post,
-                isLiked: !post.isLiked,
-                likes: post.isLiked ? post.likes - 1 : post.likes + 1
-              }
-              : post
-          )
-        );
-      }
-    } catch (err) {
-      console.error('Error liking post:', err);
-      // Revert optimistic update
-      setPosts(prevPosts =>
-        prevPosts.map(post =>
-          post.id === postId
-            ? {
-              ...post,
-              isLiked: !post.isLiked,
-              likes: post.isLiked ? post.likes - 1 : post.likes + 1
-            }
-            : post
-        )
+  const likePost = useCallback(async (postId: string) => {
+  setPosts(prevPosts =>
+    prevPosts.map(post => {
+      const isLiked = !!authState.currentId && !!Object.values(post.likes || {}).find(
+        like => like.accountId === authState.currentId
       );
+
+      const updatedLikes = { ...post.likes };
+      if (isLiked) {
+        // unlike
+        for (const key in updatedLikes) {
+          if (updatedLikes[key].accountId === authState.currentId) {
+            delete updatedLikes[key];
+          }
+        }
+      } else {
+        // like
+        const newKey = Math.random().toString(36).substring(2, 15);
+        updatedLikes[newKey] = {
+          accountId: authState.currentId,
+          TypeRole: 'Account',
+        };
+      }
+
+      return post._id === postId ? { ...post, likes: updatedLikes } : post;
+    })
+  );
+
+  try {
+    const response = await feedApi.likePost(postId);
+
+    if (!response.success) {
+      refresh();
     }
-  };
+  } catch (err) {
+    console.error('Error liking post:', err);
+    refresh(); // revert
+  }
+}, [authState, feedApi, refresh]);
+
 
   const loadMore = useCallback(() => {
     if (!loading && hasMore) {
