@@ -1,5 +1,4 @@
 import AnimatedHeader from '@/components/ui/AnimatedHeader';
-import { Role } from '@/constants/authData';
 import { fieldLabels, mockPosts } from '@/constants/profileData';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
@@ -71,13 +70,14 @@ export default function ProfileScreen() {
   const scrollY = useRef(new Animated.Value(0)).current;
   const [refreshing, setRefreshing] = useState(false);
 
-  const allPhotos = getAllPhotos(mockPosts);
+  const allPhotos = getAllPhotos(mockPosts);  
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([fetchProfile(), refreshBalance()]);
+    // await Promise.all([fetchProfile(), refreshBalance()]);
+    await fetchProfile()
     setRefreshing(false);
-  }, [fetchProfile, refreshBalance]);
+  }, [fetchProfile]);
 
   const handleLogout = () => {
     Alert.alert(
@@ -274,7 +274,7 @@ export default function ProfileScreen() {
         onPress={() => pickImage('cover')}
         disabled={imageLoading === 'cover'}
       >
-        <Image source={{ uri: profile.coverImage }} style={styles.coverImage} />
+        <Image source={{ uri: profile?.coverImage }} style={styles.coverImage} />
         <View style={styles.coverOverlay}>
           {imageLoading === 'cover' ? (
             <ActivityIndicator color="#fff" size="small" />
@@ -292,7 +292,7 @@ export default function ProfileScreen() {
         onPress={() => pickImage('avatar')}
         disabled={imageLoading === 'avatar'}
       >
-        <Image source={{ uri: profile.avatar }} style={styles.avatar} />
+        <Image source={{ uri: profile?.avatar }} style={styles.avatar} />
         <View style={styles.avatarOverlay}>
           {imageLoading === 'avatar' ? (
             <ActivityIndicator color="#fff" size="small" />
@@ -303,8 +303,8 @@ export default function ProfileScreen() {
       </TouchableOpacity>
 
       <View style={styles.nameSection}>
-        <Text style={styles.name}>{profile.name}</Text>
-        <Text style={styles.bio}>{profile.bio}</Text>
+        <Text style={styles.name}>{profile?.userName}</Text>
+        <Text style={styles.bio}>{profile?.bio}</Text>
       </View>
 
       <View style={styles.balanceSection}>
@@ -313,7 +313,7 @@ export default function ProfileScreen() {
             <Ionicons name="wallet-outline" size={24} color="#10b981" />
             <View style={styles.balanceText}>
               <Text style={styles.balanceLabel}>Số dư hiện tại</Text>
-              <Text style={styles.balanceAmount}>{formatCurrency(profile.balance)}</Text>
+              {/* <Text style={styles.balanceAmount}>{formatCurrency(profile.balance)}</Text> */}
             </View>
           </View>
           <TouchableOpacity style={styles.topUpButton} onPress={handleTopUp}>
@@ -324,12 +324,12 @@ export default function ProfileScreen() {
       </View>
 
       {/*Nâng cấp tài khoản */}
-      {authState.role === Role.USER && (
+      {/* {authState.role === Role.USER && (
         <TouchableOpacity style={styles.upgradeButton} onPress={handleUpgradeAccount}>
           <Ionicons name="arrow-up-circle" size={20} color="#fff" />
           <Text style={styles.upgradeText}>Nâng cấp tài khoản</Text>
         </TouchableOpacity>
-      )}
+      )} */}
 
       {/* <View style={styles.statsContainer}>
         <View style={styles.statItem}>
@@ -348,7 +348,7 @@ export default function ProfileScreen() {
 
       <View style={styles.statsContainer}>
         <View style={styles.statItem}>
-          <Text style={styles.statNumber}>{profile.posts}</Text>
+          {/* <Text style={styles.statNumber}>{profile.posts}</Text> */}
           <Text style={styles.statLabel}>Bài viết</Text>
         </View>
 
@@ -357,7 +357,7 @@ export default function ProfileScreen() {
           onPress={handleFollowersPress}
           activeOpacity={0.7}
         >
-          <Text style={styles.statNumber}>{profile.followers.toLocaleString()}</Text>
+          {/* <Text style={styles.statNumber}>{profile.followers.toLocaleString()}</Text> */}
           <Text style={styles.statLabel}>Người theo dõi</Text>
         </TouchableOpacity>
 
@@ -366,7 +366,7 @@ export default function ProfileScreen() {
           onPress={handleFollowingPress}
           activeOpacity={0.7}
         >
-          <Text style={styles.statNumber}>{profile.following}</Text>
+          {/* <Text style={styles.statNumber}>{profile.following}</Text> */}
           <Text style={styles.statLabel}>Đang theo dõi</Text>
         </TouchableOpacity>
       </View>
@@ -425,61 +425,64 @@ export default function ProfileScreen() {
         <Text style={styles.sectionTitle}>Thông tin cá nhân</Text>
         <ProfileItem
           label="Tên"
-          value={profile.name}
+          value={profile?.userName || ''}
           icon="person-outline"
-          onPress={() => openEditModal('name', profile.name)}
+          onPress={() => openEditModal('name', profile?.userName || '')}
         />
-        <ProfileItem
+        {/* <ProfileItem
           label="Số điện thoại"
           value={profile.phone}
           icon="call-outline"
           onPress={() => openEditModal('phone', profile.phone)}
-        />
+        /> */}
         <ProfileItem
           label="Tiểu sử"
-          value={profile.bio}
+          value={profile?.bio || ""}
           icon="document-text-outline"
-          onPress={() => openEditModal('bio', profile.bio)}
+          onPress={() => openEditModal('bio', profile?.bio || "")}
         />
-        <ProfileItem
+        {/* <ProfileItem
           label="Địa điểm"
           value={profile.location}
           icon="location-outline"
           onPress={() => openEditModal('location', profile.location)}
-        />
-        <ProfileItem
+        /> */}
+        {/* <ProfileItem
           label="Website"
           value={profile.website}
           icon="globe-outline"
           onPress={() => openEditModal('website', profile.website)}
-        />
+        /> */}
       </View>
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Mạng xã hội</Text>
         <ProfileItem
           label="TikTok"
-          value={profile.tiktok}
+          // value={profile.tiktok}
+          value={"http://tiktok.com"}
           icon="logo-tiktok"
-          onPress={() => openEditModal('tiktok', profile.tiktok)}
+          // onPress={() => openEditModal('tiktok', profile.tiktok)}
         />
         <ProfileItem
           label="Facebook"
-          value={profile.facebook}
+          // value={profile.facebook}
+          value={"http://facebook.com"}
           icon="logo-facebook"
-          onPress={() => openEditModal('facebook', profile.facebook)}
+          // onPress={() => openEditModal('facebook', profile.facebook)}
         />
         <ProfileItem
           label="Instagram"
-          value={profile.instagram}
+          // value={profile.instagram}
+          value={"http://instagram.com"}
           icon="logo-instagram"
-          onPress={() => openEditModal('instagram', profile.instagram)}
+          // onPress={() => openEditModal('instagram', profile.instagram)}
         />
       </View>
     </>
   );
 
-  if (loading && !profile.name) {
+  if (loading && !profile?.userName) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.loadingContainer}>
