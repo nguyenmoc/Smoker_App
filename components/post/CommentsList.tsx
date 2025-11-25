@@ -1,4 +1,4 @@
-import { Comment } from '@/constants/feedData';
+import { CommentData, CommentsMap } from '@/types/commentType';
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import {
@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 
 interface CommentsListProps {
-  comments: Comment[];
+  comments: CommentsMap; // <-- object {id: Comment}
   onUserPress: (userId: string) => void;
   onLikeComment: (commentId: string) => void;
 }
@@ -20,6 +20,10 @@ export const CommentsList: React.FC<CommentsListProps> = ({
   onUserPress,
   onLikeComment,
 }) => {
+
+  // Convert object -> array
+  const commentList = Object.values(comments); 
+
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -30,16 +34,16 @@ export const CommentsList: React.FC<CommentsListProps> = ({
     return `${Math.floor(diffInHours / 24)} ngày trước`;
   };
 
-  const CommentItem = ({ comment }: { comment: Comment }) => (
+  const CommentItem = ({ comment }: { comment: CommentData }) => (
     <View style={styles.commentItem}>
-      <TouchableOpacity onPress={() => onUserPress(comment.userId)}>
-        <Image source={{ uri: comment.user.avatar }} style={styles.commentAvatar} />
+      <TouchableOpacity onPress={() => onUserPress(comment.accountId)}>
+        <Image source={{ uri: comment.authorAvatar }} style={styles.commentAvatar} />
       </TouchableOpacity>
 
       <View style={styles.commentContent}>
         <View style={styles.commentBubble}>
-          <TouchableOpacity onPress={() => onUserPress(comment.userId)}>
-            <Text style={styles.commentUserName}>{comment.user.name}</Text>
+          <TouchableOpacity onPress={() => onUserPress(comment.accountId)}>
+            <Text style={styles.commentUserName}>{comment.authorName}</Text>
           </TouchableOpacity>
           <Text style={styles.commentText}>{comment.content}</Text>
         </View>
@@ -49,19 +53,18 @@ export const CommentsList: React.FC<CommentsListProps> = ({
 
           <TouchableOpacity
             style={styles.commentLikeBtn}
-            onPress={() => onLikeComment(comment.id)}
+            onPress={() => onLikeComment(comment._id)}
           >
+            {/* Like count = số lượng object trong likes */}
             <Ionicons
-              name={comment.isLiked ? "heart" : "heart-outline"}
+              name="heart-outline"
               size={14}
-              color={comment.isLiked ? "#ef4444" : "#6b7280"}
+              color="#6b7280"
             />
-            {comment.likes > 0 && (
-              <Text style={[
-                styles.commentLikeText,
-                comment.isLiked && { color: '#ef4444' }
-              ]}>
-                {comment.likes}
+
+            {Object.keys(comment.likes || {}).length > 0 && (
+              <Text style={styles.commentLikeText}>
+                {Object.keys(comment.likes).length}
               </Text>
             )}
           </TouchableOpacity>
@@ -77,14 +80,14 @@ export const CommentsList: React.FC<CommentsListProps> = ({
   return (
     <View style={styles.commentsSection}>
       <Text style={styles.commentsSectionTitle}>
-        Bình luận ({comments.length})
+        Bình luận ({commentList.length})
       </Text>
 
-      {comments.map((comment) => (
-        <CommentItem key={comment.id} comment={comment} />
+      {commentList.map((comment) => (
+        <CommentItem key={comment._id} comment={comment} />
       ))}
 
-      {comments.length === 0 && (
+      {commentList.length === 0 && (
         <View style={styles.noCommentsContainer}>
           <Ionicons name="chatbubble-outline" size={48} color="#d1d5db" />
           <Text style={styles.noCommentsText}>Chưa có bình luận nào</Text>
@@ -96,7 +99,6 @@ export const CommentsList: React.FC<CommentsListProps> = ({
 };
 
 export const styles = StyleSheet.create({
-  // Comments Section styles
   commentsSection: {
     backgroundColor: '#fff',
   },

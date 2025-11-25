@@ -1,5 +1,5 @@
 import { AuthState, Role } from '@/constants/authData';
-import { loginApi, upgradeRoleApi } from '@/services/authApi'; // Cập nhật đường dẫn nếu cần
+import { fetchUserEntities, loginApi, upgradeRoleApi } from '@/services/authApi';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -12,54 +12,89 @@ export const useAuth = () => {
     userEmail: undefined,
     role: undefined,
     token: undefined,
+    currentId: undefined,
+    avatar: undefined,
+    type: undefined,
+    EntityAccountId: undefined,
   });
 
+  // Load state login nếu user nhớ đăng nhập
   useEffect(() => {
     const loadAuthState = async () => {
       const savedEmail = await AsyncStorage.getItem('userEmail');
       const savedToken = await AsyncStorage.getItem('token');
       const savedRole = await AsyncStorage.getItem('role') as Role | null;
-      if (savedEmail && savedToken && savedRole) {
+      const savedCurrentId = await AsyncStorage.getItem('currentId');
+      const savedAvatar = await AsyncStorage.getItem('avatar');
+      const savedType = await AsyncStorage.getItem('type');
+      const savedEntityAccountId = await AsyncStorage.getItem('EntityAccountId');
+
+      if (savedEmail && savedToken) {
         setAuthState({
           isAuthenticated: true,
           userEmail: savedEmail,
           token: savedToken,
-          role: savedRole,
-        });
-      } else if (savedEmail && savedToken) {
-        setAuthState({
-          isAuthenticated: true,
-          userEmail: savedEmail,
-          token: savedToken,
-          role: Role.USER, // Default to user role
+          currentId: savedCurrentId || undefined,
+          avatar: savedAvatar || undefined,
+          type: savedType || undefined,
+          EntityAccountId: savedEntityAccountId || undefined,
+          role: savedRole || Role.CUSTOMER,
         });
       }
     };
     loadAuthState();
   }, []);
 
+
   const login = async (email: string, password: string, rememberMe: boolean) => {
     try {
-      const response = await loginApi(email, password);
-      if (response.success) {
-        const { token, role } = response.data;
-        setAuthState({
-          isAuthenticated: true,
-          userEmail: email,
-          role,
-          token,
-        });
-        if (rememberMe) {
-          await AsyncStorage.setItem('userEmail', email);
-          await AsyncStorage.setItem('token', token);
-          await AsyncStorage.setItem('role', role);
-        }
-        router.replace('/(tabs)');
-      } else {
-        Alert.alert('Đăng nhập thất bại', response.message || 'Tên đăng nhập hoặc mật khẩu không đúng');
+      const res = await loginApi(email, password);
+
+      if (!res.token) {
+        Alert.alert('Đăng nhập thất bại', res.message ?? 'Tên đăng nhập hoặc mật khẩu không đúng');
+        return;
       }
+
+      const token = res.token;
+      const currentId = res.user.id;
+      const role: Role = res.user?.role || Role.CUSTOMER;
+
+      const entities = await fetchUserEntities(currentId, token);
+      const mainEntity = entities[0];
+
+      const avatar = mainEntity.avatar;
+      const type = mainEntity.type;
+      const EntityAccountId = mainEntity.EntityAccountId;
+
+      const newAuth: AuthState = {
+        isAuthenticated: true,
+        userEmail: res.user.email,
+        role,
+        token,
+        currentId,
+        avatar,
+        type,
+        EntityAccountId,
+      };
+
+      setAuthState(newAuth);
+
+      if (rememberMe) {
+        await AsyncStorage.setItem('userEmail', res.user.email);
+        await AsyncStorage.setItem('token', token);
+        await AsyncStorage.setItem('role', role);
+        await AsyncStorage.setItem('currentId', currentId);
+        if (avatar) await AsyncStorage.setItem('avatar', avatar);
+        if (type) await AsyncStorage.setItem('type', type);
+        if (EntityAccountId) await AsyncStorage.setItem('EntityAccountId', EntityAccountId);
+      }
+
+      router.replace('/(tabs)');
+
     } catch (error) {
-      Alert.alert('Lỗi', 'Có lỗi xảy ra khi đăng nhập');
+      console.log(error);
+
+      Alert.alert('Lỗi', 'Không thể kết nối đến server');
     }
   };
 
@@ -71,27 +106,34 @@ export const useAuth = () => {
     try {
       const response = await upgradeRoleApi(authState.userEmail, newRole);
       if (response.success) {
-        const { newRole: updatedRole } = response.data;
         setAuthState((prev) => ({
           ...prev,
-          role: updatedRole,
+          role: response.data.newRole,
         }));
-        // Lưu role mới vào AsyncStorage
-        await AsyncStorage.setItem('role', updatedRole);
-        Alert.alert('Thành công', 'Vai trò đã được nâng cấp!');
-        // Có thể điều hướng hoặc refresh
+        await AsyncStorage.setItem('role', response.data.newRole);
+        Alert.alert('Thành công', 'Vai trò đã được nâng cấp');
         router.replace('/(tabs)');
       } else {
-        Alert.alert('Nâng cấp thất bại', response.message || 'Có lỗi xảy ra');
+        Alert.alert('Thất bại', response.message ?? 'Có lỗi xảy ra');
       }
     } catch (error) {
-      Alert.alert('Lỗi', 'Có lỗi xảy ra khi nâng cấp');
+      Alert.alert('Lỗi', 'Không thể kết nối server');
     }
   };
 
+
   const logout = async () => {
     await AsyncStorage.multiRemove(['userEmail', 'token', 'role']);
-    setAuthState({ isAuthenticated: false, userEmail: undefined, role: undefined, token: undefined });
+    setAuthState({
+      isAuthenticated: false,
+      userEmail: undefined,
+      role: undefined,
+      token: undefined,
+      currentId: undefined,
+      type: undefined,
+      avatar: undefined,
+      EntityAccountId: undefined,
+    });
     router.replace('/auth/login');
   };
 

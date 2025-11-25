@@ -98,13 +98,13 @@ export const EditPostModal: React.FC<EditPostModalProps> = ({
 
         <ScrollView style={styles.editModalScroll}>
           <View style={styles.editModalContent}>
-            <View style={styles.editUserInfo}>
+            {/* <View style={styles.editUserInfo}>
               <Image
                 source={{ uri: post?.user.avatar }}
                 style={styles.editUserAvatar}
               />
               <Text style={styles.editUserName}>{post?.user.name}</Text>
-            </View>
+            </View> */}
 
             <TextInput
               style={styles.editInput}

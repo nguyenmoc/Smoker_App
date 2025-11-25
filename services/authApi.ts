@@ -1,51 +1,74 @@
-import { AUTH_CONSTANTS, Role } from "@/constants/authData";
+import { Role } from "@/constants/authData";
+import { API_CONFIG } from "./apiConfig";
 
 export const loginApi = async (email: string, password: string) => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const user = AUTH_CONSTANTS.FAKE_USERS.find(
-        (u) => u.email === email && u.password === password
-      );
-      if (user) {
-        const fakeResponse = {
-          success: true,
-          data: {
-            token: 'fake-jwt-token-' + Math.random().toString(36).substr(2, 9),
-            role: user.role,
-          },
-          message: 'Đăng nhập thành công',
-        };
-        resolve(fakeResponse);
-      } else {
-        resolve({
-          success: false,
-          message: 'Tên đăng nhập hoặc mật khẩu không đúng',
-        });
-      }
-    }, 1000); // Simulate network delay
-  });
+  try {
+    const response = await fetch(`${API_CONFIG.BASE_URL}/auth/login`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email,
+        password,
+      }),
+    });
+
+    const json = await response.json();
+    return json;
+  } catch (error) {
+    return {
+      success: false,
+      message: "Không thể kết nối tới server",
+    };
+  }
 };
 
 export const upgradeRoleApi = async (email: string, newRole: Role) => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const user = AUTH_CONSTANTS.FAKE_USERS.find((u) => u.email === email);
-      if (user) {
-        // Fake cập nhật role (thực tế chỉ trả về success, client sẽ cập nhật state)
-        const fakeResponse = {
-          success: true,
-          data: {
-            newRole,
-          },
-          message: 'Nâng cấp vai trò thành công',
-        };
-        resolve(fakeResponse);
-      } else {
-        resolve({
-          success: false,
-          message: 'Không tìm thấy người dùng',
-        });
-      }
-    }, 1000); // Simulate network delay
-  });
+};
+
+export const registerApi = async (
+  email: string,
+  password: string,
+  confirmPassword: string
+) => {
+  try {
+    const response = await fetch(`${API_CONFIG.BASE_URL}/auth/register`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email,
+        password,
+        confirmPassword,
+      }),
+    });
+
+    const json = await response.json();
+    return json;
+  } catch (error) {
+    return {
+      success: false,
+      message: "Không thể kết nối tới server",
+    };
+  }
+};
+
+export const fetchUserEntities = async (userId: string, token: string) => {
+try {
+    const response = await fetch(
+    `${API_CONFIG.BASE_URL}/user/${userId}/entities`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+
+  const json = await response.json();  
+  return json;
+} catch (error) {
+  console.log("fetchUserEntities ",error);
+}
 };

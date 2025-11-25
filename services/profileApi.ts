@@ -1,6 +1,5 @@
-import { UserProfile } from "@/constants/profileData";
-
-const API_BASE_URL = 'https://your-api-domain.com/api'; // Replace with your actual API URL
+import { UpdateProfileRequestData, UserProfileData } from "@/types/profileType";
+import { API_CONFIG } from "./apiConfig";
 
 interface ApiResponse<T> {
   success: boolean;
@@ -9,31 +8,28 @@ interface ApiResponse<T> {
   error?: string;
 }
 
-interface UpdateProfileRequest {
-  field: string;
-  value: string;
-}
+export class ProfileApiService {
+  private token: string;
 
-class ProfileApiService {
+  constructor(token: string) {
+    this.token = token;
+  }
+
   private async makeRequest<T>(
     endpoint: string,
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
     try {
-      // TODO: Add authentication token from storage/context
-      const token = await this.getAuthToken();
-      
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      const response = await fetch(`${API_CONFIG.BASE_URL}${endpoint}`, {
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `Bearer ${this.token}`,
           ...options.headers,
         },
         ...options,
       });
 
       const data = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(data.message || 'API request failed');
       }
@@ -49,54 +45,40 @@ class ProfileApiService {
     }
   }
 
-  private async getAuthToken(): Promise<string> {
-    // TODO: Get token from secure storage or auth context
-    // Example: await SecureStore.getItemAsync('auth_token');
-    return 'your-auth-token-here';
+  async getUserProfile(): Promise<ApiResponse<UserProfileData>> {
+    return this.makeRequest<UserProfileData>('/user/me');
   }
 
-  async getUserProfile(userId: string): Promise<ApiResponse<UserProfile>> {
-    return this.makeRequest<UserProfile>(`/profile/${userId}`);
-  }
-
-  async updateProfile(
-    userId: string, 
-    updates: UpdateProfileRequest
-  ): Promise<ApiResponse<UserProfile>> {
-    return this.makeRequest<UserProfile>(`/profile/${userId}`, {
-      method: 'PATCH',
-      body: JSON.stringify(updates),
-    });
-  }
-
-  async updateProfileImage(
-    userId: string, 
-    type: 'avatar' | 'cover',
-    imageUri: string
-  ): Promise<ApiResponse<{ imageUrl: string }>> {
+  async updateProfile(updates: UpdateProfileRequestData): Promise<ApiResponse<UserProfileData>> {
     const formData = new FormData();
-    
-    // Convert image URI to blob for upload
-    formData.append('image', {
-      uri: imageUri,
-      type: 'image/jpeg',
-      name: `${type}_${Date.now()}.jpg`,
-    } as any);
-    
-    formData.append('type', type);
 
-    return this.makeRequest<{ imageUrl: string }>(`/profile/${userId}/image`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
+    // Thêm avatar nếu có
+    if (updates.avatar) {
+      formData.append("avatar", {
+        uri: updates.avatar.uri,
+        name: updates.avatar.name,
+        type: updates.avatar.type,
+      } as any);
+    }
+
+    // Thêm background (cover image) nếu có
+    if (updates.background) {
+      formData.append("background", {
+        uri: updates.background.uri,
+        name: updates.background.name,
+        type: updates.background.type,
+      } as any);
+    }
+
+    // Thêm các trường text
+    if (updates.userName) formData.append("userName", updates.userName);
+    if (updates.phone) formData.append("phone", updates.phone);
+    if (updates.bio) formData.append("bio", updates.bio);
+
+    return this.makeRequest<UserProfileData>(`/user/profile`, {
+      method: "PUT",
       body: formData,
+      // Không cần set Content-Type cho FormData, fetch sẽ tự động set
     });
-  }
-
-  async getUserBalance(userId: string): Promise<ApiResponse<{ balance: number }>> {
-    return this.makeRequest<{ balance: number }>(`/profile/${userId}/balance`);
   }
 }
-
-export const profileApi = new ProfileApiService();

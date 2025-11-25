@@ -1,3 +1,4 @@
+import { registerApi } from '@/services/authApi';
 import { Ionicons } from '@expo/vector-icons';
 import Checkbox from 'expo-checkbox';
 import { Image } from 'expo-image';
@@ -23,24 +24,34 @@ export default function RegisterScreen() {
   const [confirm, setConfirm] = useState('');
   const [agree, setAgree] = useState(false);
 
-  const onRegister = () => {
+  const onRegister = async () => {
     if (!agree) {
-      Alert.alert('Lỗi', 'Bạn phải đồng ý với điều khoản và điều kiện');
+      Alert.alert("Lỗi", "Bạn phải đồng ý với điều khoản và điều kiện");
       return;
     }
-    router.push('/auth/login');
+
+    const res = await registerApi(email, password, confirm);
+
+    if (res.success === false) {
+      Alert.alert("Lỗi", res.message ?? "Đăng ký thất bại");
+      return;
+    }
+
+    Alert.alert("Thành công", "Đăng ký thành công!", [
+      { text: "OK", onPress: () => router.push("/auth/login") },
+    ]);
   };
 
   return (
     <View style={styles.container}>
-      <StatusBar 
-        barStyle="dark-content" 
-        backgroundColor="transparent" 
-        translucent 
+      <StatusBar
+        barStyle="dark-content"
+        backgroundColor="transparent"
+        translucent
       />
-      
+
       {/* Nút Back */}
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.backButton}
         onPress={() => router.back()}
         activeOpacity={0.7}
@@ -52,7 +63,7 @@ export default function RegisterScreen() {
         style={styles.keyboardView}
         behavior={'padding'}
       >
-        <ScrollView 
+        <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
@@ -85,10 +96,10 @@ export default function RegisterScreen() {
             />
 
             <TextInput
-              placeholder="Số điện thoại"
+              placeholder="Xác nhận mật khẩu"
               style={styles.input}
               placeholderTextColor="#9ca3af"
-              keyboardType="phone-pad"
+              secureTextEntry
               value={confirm}
               onChangeText={setConfirm}
             />

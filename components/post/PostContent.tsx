@@ -1,8 +1,9 @@
+import { Post } from '@/constants/feedData';
+import { useAuth } from '@/hooks/useAuth';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import {
   Dimensions,
-  FlatList,
   Image,
   StyleSheet,
   Text,
@@ -13,7 +14,7 @@ import {
 const { width: screenWidth } = Dimensions.get('window');
 
 interface PostContentProps {
-  post: any;
+  post: Post;
   onUserPress: (userId: string) => void;
   onLike: () => void;
   onShare: () => void;
@@ -26,6 +27,15 @@ export const PostContent: React.FC<PostContentProps> = ({
   onShare,
 }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const { authState } = useAuth();
+  const currentUserId = authState.currentId;
+  const likeCount = Object.keys(post.likes || {}).length;
+  const commentCount = Object.keys(post.comments || {}).length;
+
+  // Kiểm tra user hiện tại đã like chưa
+  const isLiked = currentUserId
+    ? Object.values(post.likes || {}).some(like => like.accountId === currentUserId)
+    : false;
 
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
@@ -46,23 +56,23 @@ export const PostContent: React.FC<PostContentProps> = ({
   return (
     <View style={styles.postContainer}>
       <View style={styles.postHeader}>
-        <TouchableOpacity onPress={() => onUserPress(post.userId)}>
-          <Image source={{ uri: post.user.avatar }} style={styles.userAvatar} />
+        <TouchableOpacity onPress={() => onUserPress(post.accountId)}>
+          <Image source={{ uri: post.authorAvatar }} style={styles.userAvatar} />
         </TouchableOpacity>
         <View style={styles.userInfo}>
-          <TouchableOpacity onPress={() => onUserPress(post.userId)}>
-            <Text style={styles.userName}>{post.user.name}</Text>
+          <TouchableOpacity onPress={() => onUserPress(post.accountId)}>
+            <Text style={styles.userName}>{post.authorName}</Text>
           </TouchableOpacity>
           <Text style={styles.postTime}>
             {formatTime(post.createdAt)}
-            {post.location && ` • ${post.location}`}
+            {/* {post.location && ` • ${post.location}`} */}
           </Text>
         </View>
       </View>
 
       <Text style={styles.postContent}>{post.content}</Text>
 
-      {post.images.length > 0 && (
+      {/* {post.images.length > 0 && (
         <View style={styles.imageGalleryContainer}>
           <FlatList
             data={post.images}
@@ -92,20 +102,30 @@ export const PostContent: React.FC<PostContentProps> = ({
             </View>
           )}
         </View>
+      )} */}
+
+      {post.images && (
+        <View style={styles.imageContainer}>
+          <Image
+            source={{ uri: post.images || "https://picsum.photos/400/300?random=10" }}
+            style={styles.postImage}
+            resizeMode="cover"
+          />
+        </View>
       )}
 
       <View style={styles.postStats}>
         <View style={styles.statsRow}>
-          {post.likes > 0 && (
+          {likeCount > 0 && (
             <View style={styles.likesContainer}>
               <View style={styles.heartIcon}>
                 <Ionicons name="heart" size={12} color="#fff" />
               </View>
-              <Text style={styles.likesText}>{post.likes}</Text>
+              <Text style={styles.likesText}>{likeCount}</Text>
             </View>
           )}
           <Text style={styles.commentsText}>
-            {post.commentsCount > 0 && `${post.commentsCount} bình luận`}
+            {commentCount > 0 && `${commentCount} bình luận`}
           </Text>
         </View>
       </View>
@@ -116,15 +136,15 @@ export const PostContent: React.FC<PostContentProps> = ({
           onPress={onLike}
         >
           <Ionicons
-            name={post.isLiked ? "heart" : "heart-outline"}
+            name={isLiked ? "heart" : "heart-outline"}
             size={24}
-            color={post.isLiked ? "#ef4444" : "#6b7280"}
+            color={isLiked ? "#ef4444" : "#6b7280"}
           />
           <Text style={[
             styles.actionText,
-            post.isLiked && { color: '#ef4444' }
+            isLiked && { color: '#ef4444' }
           ]}>
-            {post.isLiked ? 'Đã thích' : 'Thích'}
+            {isLiked ? 'Đã thích' : 'Thích'}
           </Text>
         </TouchableOpacity>
 
