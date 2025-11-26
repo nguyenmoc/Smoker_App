@@ -12,6 +12,7 @@ export const useAccounts = () => {
 
   const { authState } = useAuth();
   const token = authState.token;
+  const userId = authState.currentId; // Assuming you have userId in authState
 
   // Initialize API service
   const accountApi = token ? new AccountApiService(token) : null;
@@ -20,17 +21,21 @@ export const useAccounts = () => {
    * Fetch all accounts
    */
   const fetchAccounts = useCallback(async () => {
-    if (!accountApi) return;
+    if (!accountApi || !userId) return;
 
     setLoading(true);
     setError(null);
 
     try {
-      const response = await accountApi.getAccounts();
+      const response = await accountApi.getAccounts(userId);      
 
       if (response.data) {
-        setAccounts(response.data.accounts);
-        setCurrentAccountId(response.data.currentAccountId);
+        setAccounts(response.data);
+        
+        // Set current account (first active or first in list)
+        const activeAccount = response.data.find(acc => acc.isActive);
+        const firstAccount = response.data[0];
+        setCurrentAccountId(activeAccount?.id || firstAccount?.id || '');
       } else {
         setError(response.message);
       }
@@ -40,7 +45,7 @@ export const useAccounts = () => {
     } finally {
       setLoading(false);
     }
-  }, [accountApi]);
+  }, [accountApi, userId]);
 
   /**
    * Get current active account
@@ -50,7 +55,7 @@ export const useAccounts = () => {
   }, [accounts, currentAccountId]);
 
   /**
-   * Create a new account (DJ or Bar)
+   * Create a new account (DJ, Bar, or Dancer)
    */
   const createAccount = async (
     type: AccountType,
@@ -71,10 +76,15 @@ export const useAccounts = () => {
         email: accountData.email || '',
         phone: accountData.phone,
         avatar: accountData.avatar,
+        background: accountData.background,
+        gender: accountData.gender,
+        address: accountData.address,
+        bio: accountData.bio,
+        pricePerHours: accountData.pricePerHours,
+        pricePerSession: accountData.pricePerSession,
         djName: accountData.djName,
         genre: accountData.genre,
         barName: accountData.barName,
-        address: accountData.address,
         description: accountData.description,
       };
 
@@ -218,11 +228,11 @@ export const useAccounts = () => {
   const canCreateAccount = useCallback(
     (type: AccountType) => {
       const accountsOfType = getAccountsByType(type);
-      // You can add limits here, e.g., max 5 DJ accounts, max 3 Bar accounts
       const limits: Record<AccountType, number> = {
-        personal: 1, // Only one personal account
+        personal: 1,
         dj: 5,
         bar: 3,
+        dancer: 5,
       };
       return accountsOfType.length < limits[type];
     },
@@ -231,8 +241,10 @@ export const useAccounts = () => {
 
   // Load accounts on mount
   useEffect(() => {
-    fetchAccounts();
-  }, [fetchAccounts]);
+    if (userId) {
+      fetchAccounts();
+    }
+  }, [userId]);
 
   return {
     accounts,
@@ -257,6 +269,7 @@ function getAccountTypeLabel(type: AccountType): string {
     personal: 'Cá nhân',
     dj: 'DJ',
     bar: 'Quán Bar',
+    dancer: 'Vũ công',
   };
   return labels[type];
 }

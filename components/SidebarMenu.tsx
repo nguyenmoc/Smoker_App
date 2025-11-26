@@ -3,6 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Animated,
   Image,
@@ -54,10 +55,10 @@ export const SidebarMenu: React.FC<SidebarMenuProps> = ({
     }
 
     onClose();
-    
+
     // Show loading
     const success = await switchAccount(accountId);
-    
+
     if (success) {
       // Refresh profile data after switching account
       await onProfileRefresh();
@@ -133,8 +134,9 @@ export const SidebarMenu: React.FC<SidebarMenuProps> = ({
           {/* Account Management Section */}
           <View style={styles.accountSection}>
             <Text style={styles.accountSectionTitle}>Tài khoản của bạn</Text>
-            
-            {/* {loading ? (
+
+            {/* Account list */}
+            {loading ? (
               <View style={styles.loadingContainer}>
                 <ActivityIndicator size="small" color="#2563eb" />
               </View>
@@ -147,16 +149,19 @@ export const SidebarMenu: React.FC<SidebarMenuProps> = ({
                       styles.accountItem,
                       currentAccountId === account.id && styles.accountItemActive,
                     ]}
-                    onPress={() => handleSwitchAccount(account.id)}
+                    onPress={() => handleSwitchAccount(account.id!)}
                   >
-                    <Image source={{ uri: account.avatar }} style={styles.accountAvatar} />
+                    <Image source={{ uri: account.Avatar }} style={styles.accountAvatar} />
                     <View style={styles.accountInfo}>
                       <Text style={styles.accountName}>{account.name}</Text>
-                      <Text style={styles.accountType}>{account.typeLabel}</Text>
+                      <Text style={styles.accountType}>{account.Role}</Text>
+                      {account.Status === 'pending' && (
+                        <Text style={styles.accountStatus}>Đang chờ duyệt</Text>
+                      )}
                     </View>
-                    {currentAccountId === account.id && (
+                    {/* {currentAccountId === account.id && (
                       <Ionicons name="checkmark-circle" size={20} color="#2563eb" />
-                    )}
+                    )} */}
                   </TouchableOpacity>
                 ))}
 
@@ -167,14 +172,7 @@ export const SidebarMenu: React.FC<SidebarMenuProps> = ({
                   <Text style={styles.addAccountText}>Thêm tài khoản</Text>
                 </TouchableOpacity>
               </>
-            )} */}
-
-             <TouchableOpacity style={styles.addAccountButton} onPress={handleAddAccount}>
-                  <View style={styles.addAccountIcon}>
-                    <Ionicons name="add" size={24} color="#2563eb" />
-                  </View>
-                  <Text style={styles.addAccountText}>Thêm tài khoản</Text>
-                </TouchableOpacity>
+            )}
           </View>
 
           <View style={styles.menuDivider} />
@@ -490,4 +488,9 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     flex: 1,
   },
+  accountStatus: {
+  fontSize: 11,
+  color: '#f59e0b',
+  marginTop: 2,
+},
 });
