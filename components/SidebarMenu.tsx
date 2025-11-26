@@ -3,7 +3,7 @@ import { Account } from '@/types/accountType';
 import { UserProfileData } from '@/types/profileType';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React from 'react';
+import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -15,6 +15,7 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import { BusinessRegistrationModal } from './BusinessRegistrationModal';
 
 interface SidebarMenuProps {
   visible: boolean;
@@ -39,7 +40,11 @@ export const SidebarMenu: React.FC<SidebarMenuProps> = ({
     currentAccountId,
     loading,
     canCreateAccount,
+    registerBusiness,
+    fetchAccounts,
   } = useAccounts();
+
+  const [showBusinessModal, setShowBusinessModal] = useState(false);
 
   if (!visible && menuAnimation.__getValue() === -320) {
     return null;
@@ -47,34 +52,29 @@ export const SidebarMenu: React.FC<SidebarMenuProps> = ({
 
   // Handle switch account
   const handleSwitchAccount = async (account: Account) => {
-    // if (accountId === currentAccountId) {
-    //   onClose();
-    //   return;
-    // }
-
     onClose();
 
     const dataProfile: UserProfileData = {
-    id: account.id!,
-    userName: account.name || '',
-    email: profile.email || '', 
-    avatar: account.Avatar,
-    background: account.Background || '',
-    coverImage: account.Background || '',
-    phone: account.Phone || '',
-    bio: account.Bio || '',
-    role: account.Role,
-    gender: account.Gender,
-    address: '', 
-    addressData: null, 
-    status: '', 
-    createdAt: account.created_at
+      id: account.id!,
+      userName: account.name || '',
+      email: profile.email || '', 
+      avatar: account.Avatar,
+      background: account.Background || '',
+      coverImage: account.Background || '',
+      phone: account.Phone || '',
+      bio: account.Bio || '',
+      role: account.Role,
+      gender: account.Gender,
+      address: '', 
+      addressData: null, 
+      status: '', 
+      createdAt: account.created_at
+    };
+
+    onProfileRefresh(dataProfile);
   };
 
-  onProfileRefresh(dataProfile)
-  };
-
-  // Handle add new account
+  // Handle add new account (old flow - commented out)
   const handleAddAccount = () => {
     onClose();
     setTimeout(() => {
@@ -108,9 +108,31 @@ export const SidebarMenu: React.FC<SidebarMenuProps> = ({
     }, 300);
   };
 
-  // Handle upgrade account
+  // Handle upgrade account - open business registration modal
   const handleUpgradeAccount = () => {
-    // onClose();
+    onClose();
+    setTimeout(() => {
+      setShowBusinessModal(true);
+    }, 300);
+  };
+
+  // Handle business registration submit
+  const handleBusinessRegistration = async (
+    type: 'dj' | 'dancer',
+    data: any
+  ) => {
+    try {
+      const success = await registerBusiness(type, data);
+      
+      if (success) {
+        // Refresh accounts list
+        await fetchAccounts();
+        setShowBusinessModal(false);
+      }
+    } catch (error) {
+      console.error('Business registration error:', error);
+      Alert.alert('Lỗi', 'Đã xảy ra lỗi khi đăng ký. Vui lòng thử lại.');
+    }
   };
 
   return (
@@ -165,12 +187,10 @@ export const SidebarMenu: React.FC<SidebarMenuProps> = ({
                         <Text style={styles.accountStatus}>Đang chờ duyệt</Text>
                       )}
                     </View>
-                    {/* {currentAccountId === account.id && (
-                      <Ionicons name="checkmark-circle" size={20} color="#2563eb" />
-                    )} */}
                   </TouchableOpacity>
                 ))}
 
+                {/* Add Account Button - Commented out as per original */}
                 {/* <TouchableOpacity style={styles.addAccountButton} onPress={handleAddAccount}>
                   <View style={styles.addAccountIcon}>
                     <Ionicons name="add" size={24} color="#2563eb" />
@@ -243,6 +263,13 @@ export const SidebarMenu: React.FC<SidebarMenuProps> = ({
           </TouchableOpacity>
         </ScrollView>
       </Animated.View>
+
+      {/* Business Registration Modal */}
+      <BusinessRegistrationModal
+        visible={showBusinessModal}
+        onClose={() => setShowBusinessModal(false)}
+        onSubmit={handleBusinessRegistration}
+      />
     </>
   );
 };
@@ -353,6 +380,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#6b7280',
   },
+  accountStatus: {
+    fontSize: 11,
+    color: '#f59e0b',
+    marginTop: 2,
+  },
   addAccountButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -406,97 +438,4 @@ const styles = StyleSheet.create({
     backgroundColor: '#e5e7eb',
     marginVertical: 8,
   },
-
-  // Upgrade Modal
-  upgradeModalContent: {
-    backgroundColor: '#fff',
-    marginHorizontal: 20,
-    marginVertical: 60,
-    borderRadius: 20,
-    maxHeight: '85%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  upgradeModalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-  },
-  upgradeModalTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  upgradeModalFooter: {
-    padding: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
-  },
-  upgradeButton: {
-    backgroundColor: '#2563eb',
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  upgradeButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-
-  // Plan Cards
-  planCard: {
-    backgroundColor: '#fff',
-    borderWidth: 2,
-    borderColor: '#e5e7eb',
-    borderRadius: 12,
-    padding: 16,
-    marginHorizontal: 20,
-    marginVertical: 8,
-  },
-  planCardSelected: {
-    borderColor: '#2563eb',
-    backgroundColor: '#eff6ff',
-  },
-  planHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  planTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  planPrice: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#2563eb',
-  },
-  planFeatures: {
-    gap: 8,
-  },
-  featureItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  featureText: {
-    fontSize: 14,
-    color: '#6b7280',
-    flex: 1,
-  },
-  accountStatus: {
-  fontSize: 11,
-  color: '#f59e0b',
-  marginTop: 2,
-},
 });

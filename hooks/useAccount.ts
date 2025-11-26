@@ -112,6 +112,99 @@ export const useAccounts = () => {
   };
 
   /**
+   * Register business account (DJ or Dancer)
+   */
+  const registerBusiness = async (
+    type: 'dj' | 'dancer',
+    businessData: {
+      name: string;
+      phone: string;
+      email: string;
+      address: string;
+      bio?: string;
+      gender?: string;
+      genre?: string;
+      pricePerHours?: string;
+      pricePerSession?: string;
+      avatar?: {
+        uri: string;
+        name: string;
+        type: string;
+      };
+      background?: {
+        uri: string;
+        name: string;
+        type: string;
+      };
+    }
+  ): Promise<boolean> => {
+    if (!accountApi || !userId) {
+      Alert.alert('Lỗi', 'Không thể đăng ký. Vui lòng đăng nhập lại.');
+      return false;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const requestData = {
+        ownerAccountId: userId,
+        name: businessData.name,
+        phone: businessData.phone,
+        email: businessData.email,
+        address: businessData.address,
+        bio: businessData.bio,
+        gender: businessData.gender,
+        genre: businessData.genre,
+        pricePerHours: businessData.pricePerHours ? parseFloat(businessData.pricePerHours) : undefined,
+        pricePerSession: businessData.pricePerSession ? parseFloat(businessData.pricePerSession) : undefined,
+      };
+
+      // Register business
+      const response = type === 'dj' 
+        ? await accountApi.registerDJ(requestData)
+        : await accountApi.registerDancer(requestData);
+
+      if (!response.success || !response.data) {
+        Alert.alert('Lỗi', response.message || 'Không thể đăng ký tài khoản');
+        setError(response.message);
+        return false;
+      }
+
+      // Upload images if provided
+      if ((businessData.avatar || businessData.background) && response.data.id) {
+        const uploadResponse = await accountApi.uploadBusinessImages(response.data.id, {
+          avatar: businessData.avatar,
+          background: businessData.background,
+        });
+
+        if (!uploadResponse.success) {
+          console.warn('Failed to upload images:', uploadResponse.message);
+          // Don't fail the whole process if image upload fails
+        }
+      }
+
+      // Refresh accounts list
+      await fetchAccounts();
+      
+      Alert.alert(
+        'Đăng ký thành công!', 
+        `Tài khoản ${type === 'dj' ? 'DJ' : 'Dancer'} của bạn đã được tạo và đang chờ phê duyệt.`
+      );
+      
+      return true;
+    } catch (err) {
+      const errorMessage = 'Không thể đăng ký tài khoản. Vui lòng thử lại.';
+      Alert.alert('Lỗi', errorMessage);
+      setError(errorMessage);
+      console.error('Error registering business:', err);
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /**
    * Switch to another account
    */
   const switchAccount = async (accountId: string): Promise<boolean> => {
@@ -254,6 +347,7 @@ export const useAccounts = () => {
     fetchAccounts,
     getCurrentAccount,
     createAccount,
+    registerBusiness,
     switchAccount,
     deleteAccount,
     getAccountsByType,

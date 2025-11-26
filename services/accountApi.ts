@@ -218,4 +218,161 @@ export class AccountApiService {
 
     return response;
   }
+
+  /**
+   * Register as DJ business
+   */
+  async registerDJ(data: {
+    ownerAccountId: string;
+    name: string;
+    phone: string;
+    email: string;
+    address: string;
+    bio?: string;
+    gender?: string;
+    pricePerHours?: number;
+    pricePerSession?: number;
+  }): Promise<ApiResponse<Account>> {
+    // Build request data matching API format
+    const requestData: any = {
+      accountId: data.ownerAccountId,
+      userName: data.name,
+      phone: data.phone,
+      address: data.address,
+    };
+
+    // Add optional fields only if they have values
+    if (data.bio) requestData.bio = data.bio;
+    if (data.gender) requestData.gender = data.gender;
+    if (data.pricePerHours) requestData.pricePerHours = data.pricePerHours;
+    if (data.pricePerSession) requestData.pricePerSession = data.pricePerSession;
+
+    console.log('DJ Registration Request:', requestData);
+
+    const response = await this.makeRequest<Account>('/business/register-dj', {
+      method: 'POST',
+      body: JSON.stringify(requestData),
+    });
+
+    if (response.success && response.data) {
+      return {
+        ...response,
+        data: this.transformAccount(response.data),
+      };
+    }
+
+    return response;
+  }
+
+  /**
+   * Register as Dancer business
+   */
+  async registerDancer(data: {
+    ownerAccountId: string;
+    name: string;
+    phone: string;
+    email: string;
+    address: string;
+    bio?: string;
+    gender?: string;
+    pricePerHours?: number;
+    pricePerSession?: number;
+  }): Promise<ApiResponse<Account>> {
+    // Build request data matching API format
+    const requestData: any = {
+      accountId: data.ownerAccountId,
+      userName: data.name,
+      phone: data.phone,
+      address: data.address,
+    };
+
+    // Add optional fields only if they have values
+    if (data.bio) requestData.bio = data.bio;
+    if (data.gender) requestData.gender = data.gender;
+    if (data.pricePerHours) requestData.pricePerHours = data.pricePerHours;
+    if (data.pricePerSession) requestData.pricePerSession = data.pricePerSession;
+
+    console.log('Dancer Registration Request:', requestData);
+
+    const response = await this.makeRequest<Account>('/business/register-dancer', {
+      method: 'POST',
+      body: JSON.stringify(requestData),
+    });
+
+    if (response.success && response.data) {
+      return {
+        ...response,
+        data: this.transformAccount(response.data),
+      };
+    }
+
+    return response;
+  }
+
+  /**
+   * Upload avatar/background for business account
+   */
+  async uploadBusinessImages(
+    businessId: string,
+    data: {
+      userName?: string;
+      phone?: string;
+      address?: string;
+      bio?: string;
+      gender?: string;
+      pricePerHours?: number;
+      pricePerSession?: number;
+      addressData?: any;
+      avatar?: {
+        uri: string;
+        name: string;
+        type: string;
+      };
+      background?: {
+        uri: string;
+        name: string;
+        type: string;
+      };
+    }
+  ): Promise<ApiResponse<any>> {
+    const formData = new FormData();
+    
+    // Required field
+    formData.append('entityId', businessId);
+
+    // Optional text fields - only append if provided
+    if (data.userName) formData.append('userName', data.userName);
+    if (data.phone) formData.append('phone', data.phone);
+    if (data.address) formData.append('address', data.address);
+    if (data.bio) formData.append('bio', data.bio);
+    if (data.gender) formData.append('gender', data.gender);
+    if (data.pricePerHours) formData.append('pricePerHours', data.pricePerHours.toString());
+    if (data.pricePerSession) formData.append('pricePerSession', data.pricePerSession.toString());
+    if (data.addressData) formData.append('addressData', JSON.stringify(data.addressData));
+
+    // Files
+    if (data.avatar) {
+      formData.append('avatar', {
+        uri: data.avatar.uri,
+        name: data.avatar.name,
+        type: data.avatar.type,
+      } as any);
+    }
+
+    if (data.background) {
+      formData.append('background', {
+        uri: data.background.uri,
+        name: data.background.name,
+        type: data.background.type,
+      } as any);
+    }
+
+    console.log('Upload Business Images - entityId:', businessId);
+
+    return this.makeRequest<any>('/business/upload', {
+      method: 'POST',
+      body: formData,
+      headers: {} as any, // Remove Content-Type for FormData
+    });
+  }
 }
