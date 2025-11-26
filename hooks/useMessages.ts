@@ -63,11 +63,16 @@ export const useMessages = (messageApi: MessageApiService | null, conversationId
       const pagination = response.pagination || {};
 
       if (params.before) {
-        // Load more (older messages)
-        setMessages(prev => [...prev, ...messagesData]);
+        // Load more (older messages) - add to beginning of array
+        setMessages(prev => {
+          const newMessages = [...messagesData, ...prev];
+          // Sort by createdAt to ensure correct chronological order
+          return newMessages.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+        });
       } else {
         // Initial load or refresh
-        setMessages(messagesData);
+        const sortedMessages = messagesData.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+        setMessages(sortedMessages);
       }
 
       setHasMore(pagination.hasMore || false);
@@ -102,7 +107,7 @@ export const useMessages = (messageApi: MessageApiService | null, conversationId
     if (!messageApi || !currentUserId) return;
 
     try {
-      const lastMessageId = messages.length > 0 ? messages[0]._id : null;
+      const lastMessageId = messages.length > 0 ? messages[messages.length - 1]._id : null; // Latest message
       await messageApi.markMessagesRead(conversationId, currentUserId, lastMessageId);
     } catch (err) {
       console.error('Failed to mark messages as read:', err);
@@ -122,7 +127,11 @@ export const useMessages = (messageApi: MessageApiService | null, conversationId
   }, [messageApi]);
 
   const addMessage = useCallback((message: Message) => {
-    setMessages(prev => [message, ...prev]);
+    setMessages(prev => {
+      const newMessages = [...prev, message];
+      // Sort by createdAt to ensure correct order
+      return newMessages.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    });
   }, []);
 
   useEffect(() => {

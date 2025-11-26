@@ -5,7 +5,7 @@ import { useMessages } from '@/hooks/useMessages';
 import { useSocket } from '@/hooks/useSocket';
 import { MessageApiService, MessageType } from '@/services/messageApi';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import { Alert, Animated, FlatList, Image, KeyboardAvoidingView, Platform, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -56,19 +56,29 @@ export default function ConversationScreen() {
   const { authState } = useAuth();
   const currentUserId = authState.EntityAccountId;
   const token = authState.token;
-  const messageApi = token ? new MessageApiService(token) : null;
   const { socket, isConnected } = useSocket();
 
-  console.log('🔵 ConversationScreen - Component initialized:', {
-    conversationId,
-    currentUserId,
-    token: token ? 'Present' : 'Missing',
-    messageApi: messageApi ? 'Created' : 'Null'
-  });
+  // Create messageApi once and reuse
+  const messageApi = useRef<MessageApiService | null>(null);
+
+  if (token && !messageApi.current) {
+    messageApi.current = new MessageApiService(token);
+    console.log('🔵 MessageApiService - Created once');
+  }
+
+  useEffect(() => {
+    console.log('🔵 ConversationScreen - Component initialized:', {
+      conversationId,
+      currentUserId,
+      token: token ? 'Present' : 'Missing',
+      messageApi: messageApi.current ? 'Created' : 'Null'
+    });
+  }, [conversationId, currentUserId, token]);
 
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const headerTranslateY = new Animated.Value(0);
   const flatListRef = useRef<FlatList>(null);
+  const hasMarkedAsRead = useRef(false);
 
   const {
     messages,
@@ -79,22 +89,36 @@ export default function ConversationScreen() {
     sendMessage: sendMessageHook,
     markAsRead,
     addMessage
-  } = useMessages(messageApi, conversationId || '', currentUserId);
+  } = useMessages(messageApi.current, conversationId || '', currentUserId);
 
   useEffect(() => {
-    console.log('🔄 useEffect - conversationId changed:', conversationId);
-    if (conversationId) {
-      loadConversation();
+    // Scroll to bottom when messages change (new message received)
+    if (messages.length > 0 && flatListRef.current) {
+      setTimeout(() => {
+        flatListRef.current?.scrollToEnd({ animated: true });
+      }, 100);
     }
-  }, [conversationId]);
+  }, [messages]);
 
   useEffect(() => {
-    console.log('📖 useEffect - markAsRead triggered:', { conversationId, currentUserId });
-    // Mark messages as read when entering conversation
-    if (conversationId && currentUserId) {
+    console.log('📖 useEffect - markAsRead triggered:', { conversationId, currentUserId, hasMarked: hasMarkedAsRead.current });
+    // Mark messages as read when entering conversation (only once)
+    if (conversationId && currentUserId && !hasMarkedAsRead.current) {
+      hasMarkedAsRead.current = true;
       markAsRead();
     }
   }, [conversationId, currentUserId]);
+
+  const handleNewMessage = useCallback((message: Message) => {
+    console.log('📨 Socket - New message received:', {
+      id: message._id,
+      content: message.content,
+      sender: message.sender_id,
+      conversation: message.conversation_id
+    });
+    // Add new message to the list
+    addMessage(message);
+  }, [addMessage]);
 
   useEffect(() => {
     console.log('🔌 useEffect - socket effect:', { socket: !!socket, conversationId, isConnected });
@@ -104,27 +128,18 @@ export default function ConversationScreen() {
       console.log('🔌 Socket - Joined conversation:', conversationId);
 
       // Listen for new messages
-      socket.on('new_message', (message: Message) => {
-        console.log('📨 Socket - New message received:', {
-          id: message._id,
-          content: message.content,
-          sender: message.sender_id,
-          conversation: message.conversation_id
-        });
-        // Add new message to the list
-        addMessage(message);
-      });
+      socket.on('new_message', handleNewMessage);
 
       return () => {
         console.log('🔌 Socket - Leaving conversation:', conversationId);
-        socket.off('new_message');
+        socket.off('new_message', handleNewMessage);
         socket.emit('leave_conversation', conversationId);
       };
     }
-  }, [socket, conversationId]);
+  }, [socket, conversationId, handleNewMessage]);
 
-  const loadConversation = async () => {
-    if (!messageApi) {
+  const loadConversation = useCallback(async () => {
+    if (!messageApi.current) {
       console.log('❌ loadConversation - No messageApi available');
       return;
     }
@@ -132,7 +147,7 @@ export default function ConversationScreen() {
     try {
       console.log('🔍 loadConversation - Loading conversation for ID:', conversationId);
       // For now, we'll get conversation details from conversations list
-      const conversations = await messageApi.getConversations(authState.EntityAccountId);
+      const conversations = await messageApi.current.getConversations(authState.EntityAccountId);
       console.log('📋 loadConversation - All conversations:', conversations.length, 'found');
       const conv = conversations.find((c: Conversation) => c._id === conversationId);
       console.log('✅ loadConversation - Found conversation:', conv ? {
@@ -145,20 +160,20 @@ export default function ConversationScreen() {
     } catch (error) {
       console.error('❌ loadConversation - Error:', error);
     }
-  };
+  }, [conversationId, authState.EntityAccountId]);
 
-  const handleLoadMore = () => {
+  const handleLoadMore = useCallback(() => {
     console.log('⬆️ handleLoadMore - Triggered:', { hasMore, loading, messagesCount: messages.length });
     if (hasMore && !loading && messages.length > 0) {
-      const lastMessage = messages[messages.length - 1]; // Since inverted, last message is oldest
-      console.log('⬆️ handleLoadMore - Loading more before message:', lastMessage._id);
-      loadMessages({ before: lastMessage._id });
+      const firstMessage = messages[0]; // Oldest message in current list
+      console.log('⬆️ handleLoadMore - Loading more before message:', firstMessage._id);
+      loadMessages({ before: firstMessage._id });
     } else {
       console.log('⬆️ handleLoadMore - Skipped:', { hasMore, loading, messagesCount: messages.length });
     }
-  };
+  }, [hasMore, loading, messages, loadMessages]);
 
-  const handleSendMessage = async (content: string, messageType: MessageType = 'text') => {
+  const handleSendMessage = useCallback(async (content: string, messageType: MessageType = 'text') => {
     console.log('📤 handleSendMessage - Sending:', { content: content.substring(0, 50), messageType, conversationId });
     const success = await sendMessageHook(content, messageType);
     console.log('📤 handleSendMessage - Result:', success);
@@ -169,7 +184,7 @@ export default function ConversationScreen() {
     } else {
       Alert.alert('Lỗi', 'Không thể gửi tin nhắn');
     }
-  };
+  }, [conversationId, sendMessageHook, loadMessages]);
 
   const renderMessageItem = ({ item }: { item: Message }) => {
     const isMyMessage = item.sender_id === currentUserId;
@@ -237,11 +252,9 @@ export default function ConversationScreen() {
           ref={flatListRef}
           data={messages}
           renderItem={renderMessageItem}
-          keyExtractor={(item) => item._id}
-          inverted
+          keyExtractor={(item, index) => `${item._id}_${index}`}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingTop: 60, paddingBottom: 20 }}
-          onContentSizeChange={() => flatListRef.current?.scrollToOffset({ offset: 0, animated: true })}
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.1}
         />
