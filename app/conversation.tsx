@@ -4,10 +4,12 @@ import { useAuth } from '@/hooks/useAuth';
 import { useMessages } from '@/hooks/useMessages';
 import { useSocket } from '@/hooks/useSocket';
 import { MessageApiService, MessageType } from '@/services/messageApi';
+import publicProfileApi from '@/services/publicProfileApi';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Animated, FlatList, Image, KeyboardAvoidingView, Platform, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { PublicProfileData } from '@/types/profileType';
 
 interface Message {
   _id: string;
@@ -66,6 +68,7 @@ export default function ConversationScreen() {
   }
 
   const [conversation, setConversation] = useState<Conversation | null>(null);
+  const [participantProfile, setParticipantProfile] = useState<PublicProfileData | null>(null);
   const headerTranslateY = new Animated.Value(0);
   const flatListRef = useRef<FlatList>(null);
   const hasMarkedAsRead = useRef(false);
@@ -102,7 +105,6 @@ export default function ConversationScreen() {
     // Add new message to the list
     addMessage(message);
   }, [addMessage]);
-
   useEffect(() => {
     if (socket && conversationId) {
       // Join conversation room
@@ -117,6 +119,11 @@ export default function ConversationScreen() {
       };
     }
   }, [socket, conversationId, handleNewMessage]);
+  useEffect(() => {
+    if (conversationId && authState.EntityAccountId) {
+      loadConversation();
+    }
+  }, [conversationId, authState.EntityAccountId, loadConversation]);
 
   const loadConversation = useCallback(async () => {
     if (!messageApi.current) {
@@ -128,8 +135,16 @@ export default function ConversationScreen() {
       const conversations = await messageApi.current.getConversations(authState.EntityAccountId);
       const conv = conversations.find((c: Conversation) => c._id === conversationId);
       setConversation(conv || null);
+
+      if (conv && conv.otherParticipants.length > 0) {
+        const profileResponse = await publicProfileApi.getByEntityId(conv.otherParticipants[0]);
+        if (profileResponse.success && profileResponse.data) {
+          setParticipantProfile(profileResponse.data);
+        }
+      }
     } catch (error) {
       // Handle error silently
+      console.error('Error loading conversation details:', error);
     }
   }, [conversationId, authState.EntityAccountId]);
 
@@ -160,7 +175,7 @@ export default function ConversationScreen() {
       ]}>
         {!isMyMessage && (
           <Image
-            source={{ uri: item.senderAvatar || `https://i.pravatar.cc/100?img=${item.sender_id.slice(0, 2)}` }}
+            source={{ uri: participantProfile?.avatar || `https://i.pravatar.cc/100?img=${item.sender_id.slice(0, 2)}` }}
             style={styles.messageAvatar}
           />
         )}
@@ -193,7 +208,7 @@ export default function ConversationScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <AnimatedHeader
-        title={otherParticipantId ? `Chat với ${otherParticipantId.slice(0, 8)}` : 'Chat'}
+        title={participantProfile?.name ? `Chat với ${participantProfile.name}` : otherParticipantId ? `Chat với ${otherParticipantId.slice(0, 8)}` : 'Chat'}
         subtitle={isConnected ? 'Online' : 'Offline'}
         headerTranslateY={headerTranslateY}
         iconName="arrow-back"
