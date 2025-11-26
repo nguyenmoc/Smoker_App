@@ -29,6 +29,12 @@ export default function UserProfileScreen() {
   const scrollY = useRef(new Animated.Value(0)).current;
   const AnimatedFlatList = Animated.createAnimatedComponent(FlatList);
 
+  useEffect(() => {
+    if (user) {
+      console.log('Thông tin hồ sơ:', user);
+    }
+  }, [user]);
+
   const formatNumber = (num: number) => {
     if (num >= 1000000) {
       return (num / 1000000).toFixed(1) + 'M';
