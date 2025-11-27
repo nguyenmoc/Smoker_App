@@ -22,7 +22,7 @@ export class FeedApiService {
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
     try {
-      
+
       const response = await fetch(`${API_CONFIG.BASE_URL}${endpoint}`, {
         headers: {
           'Content-Type': 'application/json',
@@ -33,7 +33,7 @@ export class FeedApiService {
       });
 
       const data = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(data.message || 'API request failed');
       }
@@ -72,15 +72,15 @@ export class FeedApiService {
 
   async uploadPostMedia(files: { uri: string; type: 'image' | 'video' }[]): Promise<ApiResponse<Array<{ url: string; secure_url: string; public_id: string; format: string; type: string }>>> {
     const formData = new FormData();
-    
+
     files.forEach((file, index) => {
       const fileExtension = file.uri.split('.').pop()?.toLowerCase() || 'jpg';
-      const mimeType = file.type === 'video' 
-        ? `video/${fileExtension}` 
+      const mimeType = file.type === 'video'
+        ? `video/${fileExtension}`
         : `image/${fileExtension}`;
-      
+
       const fieldName = file.type === 'video' ? 'videos' : 'images';
-      
+
       formData.append(fieldName, {
         uri: file.uri,
         type: mimeType,
@@ -98,7 +98,7 @@ export class FeedApiService {
       });
 
       const data = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(data.message || 'Upload failed');
       }
@@ -164,6 +164,9 @@ export class FeedApiService {
   async getUserProfile(userId: string): Promise<ApiResponse<User>> {
     return this.makeRequest<User>(`/users/${userId}`);
   }
+  async getViewInformation(userId: string): Promise<ApiResponse<User>> {
+    return this.makeRequest<User>(`/user/by-entity/${userId}`);
+  }
 
   async getUserPosts(userId: string, page: number = 1): Promise<ApiResponse<Post[]>> {
     return this.makeRequest<Post[]>(`/users/${userId}/posts?page=${page}`);
@@ -192,3 +195,5 @@ export class FeedApiService {
     });
   }
 }
+
+export const feedApi = new FeedApiService();

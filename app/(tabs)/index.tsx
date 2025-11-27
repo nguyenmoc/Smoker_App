@@ -253,11 +253,11 @@ export default function HomeScreen() {
     return (
       <View style={styles.card}>
         <View style={styles.cardHeader}>
-          <TouchableOpacity onPress={() => handleUserPress(item.accountId)}>
+          <TouchableOpacity onPress={() => handleUserPress(item.authorEntityAccountId)}>
             <Image source={{ uri: item.authorAvatar }} style={styles.avatar} />
           </TouchableOpacity>
           <View style={styles.headerInfo}>
-            <TouchableOpacity onPress={() => handleUserPress(item.accountId)}>
+            <TouchableOpacity onPress={() => handleUserPress(item.authorEntityAccountId)}>
               <Text style={styles.username}>{item.authorName}</Text>
             </TouchableOpacity>
             <Text style={styles.subText}>
