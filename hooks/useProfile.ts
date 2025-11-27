@@ -6,7 +6,7 @@ import { useAuth } from './useAuth';
 
 type FieldValue = string | UploadFile;
 
-export const useProfile = (userId: string) => {
+export const useProfile = () => {
   const [profile, setProfile] = useState<UserProfileData>();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -105,6 +105,17 @@ export const useProfile = (userId: string) => {
     // Implement nếu cần
   };
 
+  const setFullProfile = (newProfile: UserProfileData) => {
+    setLoading(false)
+    
+    setProfile(prev => ({
+      ...prev,
+      ...newProfile,
+    }));
+    setLoading(true)
+  };
+
+
   useEffect(() => {
     fetchProfile();
   }, [fetchProfile]);
@@ -117,5 +128,6 @@ export const useProfile = (userId: string) => {
     updateProfileField,
     updateProfileImage,
     refreshBalance,
+    setFullProfile
   };
 };
