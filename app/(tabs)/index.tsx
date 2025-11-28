@@ -117,9 +117,18 @@ export default function HomeScreen() {
           .catch(() => setUnreadCount(0));
       }
     };
+    const handleMessagesRead = () => {
+      if (messageApi && entityAccountId) {
+        messageApi.getUnreadCount(entityAccountId)
+          .then(setUnreadCount)
+          .catch(() => setUnreadCount(0));
+      }
+    };
     socket.on('new_message', handleNewMessage);
+    socket.on('messages_read', handleMessagesRead);
     return () => {
       socket.off('new_message', handleNewMessage);
+      socket.off('messages_read', handleMessagesRead);
     };
   }, [socket, messageApi, entityAccountId]);
 

@@ -5,11 +5,11 @@ import { useMessages } from '@/hooks/useMessages';
 import { useSocket } from '@/hooks/useSocket';
 import { MessageApiService, MessageType } from '@/services/messageApi';
 import publicProfileApi from '@/services/publicProfileApi';
+import { PublicProfileData } from '@/types/profileType';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Animated, FlatList, Image, KeyboardAvoidingView, Platform, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Animated, FlatList, Image, KeyboardAvoidingView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { PublicProfileData } from '@/types/profileType';
 
 interface Message {
   _id: string;
@@ -84,6 +84,29 @@ export default function ConversationScreen() {
     addMessage
   } = useMessages(messageApi.current, conversationId || '', currentUserId);
 
+  const loadConversation = useCallback(async () => {
+    if (!messageApi.current) {
+      return;
+    }
+
+    try {
+      // For now, we'll get conversation details from conversations list
+      const conversations = await messageApi.current.getConversations(authState.EntityAccountId);
+      const conv = conversations.find((c: Conversation) => c._id === conversationId);
+      setConversation(conv || null);
+
+      if (conv && conv.otherParticipants.length > 0) {
+        const profileResponse = await publicProfileApi.getByEntityId(conv.otherParticipants[0]);
+        if (profileResponse.success && profileResponse.data) {
+          setParticipantProfile(profileResponse.data);
+        }
+      }
+    } catch (error) {
+      // Handle error silently
+      console.error('Error loading conversation details:', error);
+    }
+  }, [conversationId, authState.EntityAccountId]);
+
   useEffect(() => {
     // Scroll to bottom when messages change (new message received)
     if (messages.length > 0 && flatListRef.current) {
@@ -94,12 +117,21 @@ export default function ConversationScreen() {
   }, [messages]);
 
   useEffect(() => {
-    // Mark messages as read when entering conversation (only once)
-    if (conversationId && currentUserId && !hasMarkedAsRead.current) {
-      hasMarkedAsRead.current = true;
-      markAsRead();
-    }
-  }, [conversationId, currentUserId]);
+    // Mark messages as read when messages are loaded (only once)
+    const markRead = async () => {
+      if (messages.length > 0 && !hasMarkedAsRead.current) {
+        hasMarkedAsRead.current = true;
+        console.log('Marking messages as read for conversation:', conversationId);
+        await markAsRead();
+        console.log('Marked as read successfully');
+        // Emit event to update unread count in other screens
+        if (socket) {
+          socket.emit('messages_read', { conversationId });
+        }
+      }
+    };
+    markRead();
+  }, [messages, socket, conversationId]);
 
   const handleNewMessage = useCallback((message: Message) => {
     // Add new message to the list
@@ -125,29 +157,6 @@ export default function ConversationScreen() {
     }
   }, [conversationId, authState.EntityAccountId, loadConversation]);
 
-  const loadConversation = useCallback(async () => {
-    if (!messageApi.current) {
-      return;
-    }
-
-    try {
-      // For now, we'll get conversation details from conversations list
-      const conversations = await messageApi.current.getConversations(authState.EntityAccountId);
-      const conv = conversations.find((c: Conversation) => c._id === conversationId);
-      setConversation(conv || null);
-
-      if (conv && conv.otherParticipants.length > 0) {
-        const profileResponse = await publicProfileApi.getByEntityId(conv.otherParticipants[0]);
-        if (profileResponse.success && profileResponse.data) {
-          setParticipantProfile(profileResponse.data);
-        }
-      }
-    } catch (error) {
-      // Handle error silently
-      console.error('Error loading conversation details:', error);
-    }
-  }, [conversationId, authState.EntityAccountId]);
-
   const handleLoadMore = useCallback(() => {
     if (hasMore && !loading && messages.length > 0) {
       const firstMessage = messages[0]; // Oldest message in current list
@@ -165,8 +174,9 @@ export default function ConversationScreen() {
     }
   }, [conversationId, sendMessageHook, loadMessages]);
 
-  const renderMessageItem = ({ item }: { item: Message }) => {
+  const renderMessageItem = ({ item, index }: { item: Message; index: number }) => {
     const isMyMessage = item.sender_id === currentUserId;
+    const isLastMessage = index === messages.length - 1;
 
     return (
       <View style={[
@@ -189,15 +199,20 @@ export default function ConversationScreen() {
           ]}>
             {item.content}
           </Text>
-          <Text style={[
-            styles.messageTime,
-            isMyMessage ? styles.myTime : styles.otherTime
-          ]}>
-            {new Date(item.createdAt).toLocaleTimeString('vi-VN', {
-              hour: '2-digit',
-              minute: '2-digit'
-            })}
-          </Text>
+          <View style={styles.messageFooter}>
+            <Text style={[
+              styles.messageTime,
+              isMyMessage ? styles.myTime : styles.otherTime
+            ]}>
+              {new Date(item.createdAt).toLocaleTimeString('vi-VN', {
+                hour: '2-digit',
+                minute: '2-digit'
+              })}
+            </Text>
+            {isMyMessage && isLastMessage && hasMarkedAsRead.current && (
+              <Text style={styles.readStatus}>Đã xem</Text>
+            )}
+          </View>
         </View>
       </View>
     );
@@ -217,19 +232,30 @@ export default function ConversationScreen() {
 
       <KeyboardAvoidingView
         style={styles.content}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+        behavior="padding"
+        keyboardVerticalOffset={0}
       >
-        <FlatList
-          ref={flatListRef}
-          data={messages}
-          renderItem={renderMessageItem}
-          keyExtractor={(item, index) => `${item._id}_${index}`}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingTop: 60, paddingBottom: 20 }}
-          onEndReached={handleLoadMore}
-          onEndReachedThreshold={0.1}
-        />
+        {loading && messages.length === 0 ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#2563eb" />
+            <Text style={styles.loadingText}>Đang tải tin nhắn...</Text>
+          </View>
+        ) : messages.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>Chưa có tin nhắn nào.{'\n'}Hãy bắt đầu cuộc trò chuyện!</Text>
+          </View>
+        ) : (
+          <FlatList
+            ref={flatListRef}
+            data={messages}
+            renderItem={renderMessageItem}
+            keyExtractor={(item, index) => `${item._id}_${index}`}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingTop: 60, paddingBottom: 20 }}
+            onEndReached={handleLoadMore}
+            onEndReachedThreshold={0.1}
+          />
+        )}
 
         <MessageInput
           onSendMessage={handleSendMessage}
@@ -304,5 +330,37 @@ const styles = StyleSheet.create({
   },
   otherTime: {
     color: '#6b7280',
+  },
+  messageFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  readStatus: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.7)',
+    fontStyle: 'italic',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#6b7280',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#6b7280',
+    textAlign: 'center',
+    lineHeight: 24,
   },
 });
