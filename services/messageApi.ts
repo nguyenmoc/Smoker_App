@@ -110,4 +110,13 @@ export class MessageApiService {
     const response = await this.makeRequest<any>(`/messages/conversation`, { method: "POST", body });
     return response.success ? response.data : null;
   }
+
+  async getUnreadCount(entityAccountId: string): Promise<number> {
+    const params = entityAccountId ? `?entityAccountId=${encodeURIComponent(entityAccountId)}` : '';
+    const response = await this.makeRequest<any>(`/messages/unread-count${params}`);
+    if (response.success && response.data && typeof response.data.totalUnreadCount === 'number') {
+      return response.data.totalUnreadCount;
+    }
+    return 0;
+  }
 }

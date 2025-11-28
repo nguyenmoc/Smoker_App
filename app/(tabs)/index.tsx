@@ -4,14 +4,16 @@ import { StoryViewer } from '@/components/story/StoryViewer';
 import AnimatedHeader from '@/components/ui/AnimatedHeader';
 import { useAuth } from '@/hooks/useAuth';
 import { useFeed } from '@/hooks/useFeed';
+import { useSocket } from '@/hooks/useSocket';
 import { useStory } from '@/hooks/useStory';
+import { MessageApiService } from '@/services/messageApi';
 import { PostData } from '@/types/postType';
 import { StoryData } from '@/types/storyType';
 import { Ionicons } from '@expo/vector-icons';
 import { ResizeMode, Video } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -30,7 +32,7 @@ import {
   View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
+  const { socket } = useSocket();
 const { width: screenWidth } = Dimensions.get('window');
 
 const PostInputBox = ({ openModal, pickMedia, avatar }: { openModal: () => void; pickMedia: () => void; avatar: string | undefined; }) => (
@@ -65,6 +67,7 @@ const UploadingProgressBar = ({ progress }: { progress: number }) => (
   </View>
 );
 
+
 export default function HomeScreen() {
   const router = useRouter();
   const [modalVisible, setModalVisible] = useState(false);
@@ -77,6 +80,49 @@ export default function HomeScreen() {
   const avartarAuthor = authState.avatar;
   const entityAccountId = authState.EntityAccountId;
   const currentUserName = authState.userEmail || 'Bạn';
+
+  // Unread count state
+  const [unreadCount, setUnreadCount] = useState<number>(0);
+
+  // Message API instance
+  const messageApi = React.useMemo(() => {
+    if (authState.token) {
+      return new MessageApiService(authState.token);
+    }
+    return null;
+  }, [authState.token]);
+
+  // Fetch unread count
+  useEffect(() => {
+    const fetchUnread = async () => {
+      if (messageApi && entityAccountId) {
+        try {
+          const count = await messageApi.getUnreadCount(entityAccountId);
+          setUnreadCount(count);
+        } catch (err) {
+          setUnreadCount(0);
+        }
+      }
+    };
+    fetchUnread();
+  }, [messageApi, entityAccountId]);
+
+  // Listen for new_message socket event to update unread count in realtime
+  useEffect(() => {
+    if (!socket) return;
+    const handleNewMessage = () => {
+      // Gọi lại API lấy số lượng tin nhắn chưa đọc
+      if (messageApi && entityAccountId) {
+        messageApi.getUnreadCount(entityAccountId)
+          .then(setUnreadCount)
+          .catch(() => setUnreadCount(0));
+      }
+    };
+    socket.on('new_message', handleNewMessage);
+    return () => {
+      socket.off('new_message', handleNewMessage);
+    };
+  }, [socket, messageApi, entityAccountId]);
 
   // Story states
   const [storyViewerVisible, setStoryViewerVisible] = useState(false);
@@ -407,10 +453,36 @@ export default function HomeScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar barStyle="light-content" backgroundColor="#1f2937" />
 
+
       <AnimatedHeader
         title="Smoker App"
         subtitle="Chia sẻ khoảnh khắc"
         headerTranslateY={headerTranslateY}
+        iconName="chatbubble-outline"
+        onIconPress={() => router.push('/chat')}
+        style={{}}
+        // Custom right icon with badge
+        rightElement={
+          unreadCount > 0 ? (
+            <View style={{ position: 'relative' }}>
+              <Ionicons name="chatbubble-outline" size={24} color="#fff" />
+              <View style={{
+                position: 'absolute',
+                top: -6,
+                right: -6,
+                backgroundColor: '#ef4444',
+                borderRadius: 8,
+                minWidth: 16,
+                height: 16,
+                alignItems: 'center',
+                justifyContent: 'center',
+                paddingHorizontal: 3,
+              }}>
+                <Text style={{ color: '#fff', fontSize: 10, fontWeight: 'bold' }}>{unreadCount}</Text>
+              </View>
+            </View>
+          ) : null
+        }
       />
 
       <Animated.FlatList
