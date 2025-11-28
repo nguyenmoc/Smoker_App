@@ -319,11 +319,19 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
 const formatTimeAgo = (dateString: string): string => {
   const date = new Date(dateString);
   const now = new Date();
-  const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
+  const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
 
-  if (diffInHours < 1) return 'Vừa xong';
-  if (diffInHours < 24) return `${diffInHours}h`;
-  return `${Math.floor(diffInHours / 24)}d`;
+  if (diffInMinutes < 1) {
+    return 'Vừa xong';
+  } else if (diffInMinutes < 60) {
+    return `${diffInMinutes}phút`;
+  } else if (diffInMinutes < 1440) {
+    const hours = Math.floor(diffInMinutes / 60);
+    return `${hours}giờ`;
+  } else {
+    const days = Math.floor(diffInMinutes / 1440);
+    return `${days}ngày`;
+  }
 };
 
 const styles = StyleSheet.create({

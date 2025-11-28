@@ -32,9 +32,32 @@ export const StoryList: React.FC<StoryListProps> = ({
   onCreateStory,
   loading = false,
 }) => {
-  // Tìm story của user hiện tại
+  const getLatestStoryForUser = (userStories: StoryData[]) => {
+    if (userStories.length === 0) return null;
+    return userStories.reduce((latest, current) => {
+      return new Date(current.createdAt) > new Date(latest.createdAt) ? current : latest;
+    });
+  };
+
   const myStories = stories.filter(s => s.isOwner);
   const otherStories = stories.filter(s => !s.isOwner);
+
+  const latestMyStory = getLatestStoryForUser(myStories);
+
+  const latestOtherStoriesMap = new Map<string, StoryData>();
+  
+  otherStories.forEach(story => {
+    const authorKey = story.authorName;
+    const existingStory = latestOtherStoriesMap.get(authorKey);
+    
+    if (!existingStory || new Date(story.createdAt) > new Date(existingStory.createdAt)) {
+      latestOtherStoriesMap.set(authorKey, story);
+    }
+  });
+
+  const sortedOtherStories: StoryData[] = Array.from(latestOtherStoriesMap.values()).sort((a, b) => 
+    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
 
   return (
     <View style={styles.container}>
@@ -43,7 +66,6 @@ export const StoryList: React.FC<StoryListProps> = ({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Create Story Card - LUÔN HIỂN THỊ */}
         <TouchableOpacity style={styles.storyCard} onPress={onCreateStory}>
           <View style={styles.createStoryImageContainer}>
             <Image
@@ -51,7 +73,6 @@ export const StoryList: React.FC<StoryListProps> = ({
               style={styles.createStoryImage}
             />
           </View>
-          
           <View style={styles.createStoryFooter}>
             <View style={styles.createIconContainer}>
               <Ionicons name="add" size={20} color="#fff" />
@@ -60,53 +81,50 @@ export const StoryList: React.FC<StoryListProps> = ({
           </View>
         </TouchableOpacity>
 
-        {myStories.map((story, index) => {
-          const imageUrl = story.images || (story.mediaIds && story.mediaIds.length > 0 ? story.mediaIds[0].url : null);
-          
-          return (
-            <TouchableOpacity
-              key={story._id}
-              style={styles.storyCard}
-              onPress={() => onStoryPress(story, index)}
-            >
-              {imageUrl ? (
-                <Image
-                  source={{ uri: imageUrl }}
-                  style={styles.storyCardImage}
-                />
-              ) : (
-                <LinearGradient
-                  colors={['#667eea', '#764ba2']}
-                  style={styles.storyCardImage}
-                />
-              )}
+        {latestMyStory && (
+          <TouchableOpacity
+            style={styles.storyCard}
+            onPress={() => onStoryPress(latestMyStory, 0)}
+          >
+            {(() => {
+              const imageUrl = latestMyStory.images || 
+                (latestMyStory.mediaIds && latestMyStory.mediaIds.length > 0 
+                  ? latestMyStory.mediaIds[0].url 
+                  : null
+                );
               
-              <View style={styles.storyCardOverlay} />
-              
-              <View style={styles.myStoryHeader}>
-                <View style={styles.myStoryAvatarContainer}>
-                  <Image
-                    source={{ uri: currentUserAvatar || 'https://i.pravatar.cc/100?img=10' }}
-                    style={styles.myStoryAvatar}
-                  />
+              return (
+                <>
+                  {imageUrl ? (
+                    <Image source={{ uri: imageUrl }} style={styles.storyCardImage} />
+                  ) : (
+                    <LinearGradient colors={['#667eea', '#764ba2']} style={styles.storyCardImage} />
+                  )}
+                  <View style={styles.storyCardOverlay} />
+                  <View style={styles.myStoryHeader}>
+                    <View style={styles.myStoryAvatarContainer}>
+                      <Image
+                        source={{ uri: currentUserAvatar || 'https://i.pravatar.cc/100?img=10' }}
+                        style={styles.myStoryAvatar}
+                      />
+                      <LinearGradient
+                        colors={['#f59e0b', '#ef4444']}
+                        style={styles.myStoryAvatarBorder}
+                      />
+                    </View>
+                  </View>
                   <LinearGradient
-                    colors={['#f59e0b', '#ef4444']}
-                    style={styles.myStoryAvatarBorder}
-                  />
-                </View>
-              </View>
+                    colors={['transparent', 'rgba(0,0,0,0.6)']}
+                    style={styles.storyCardFooter}
+                  >
+                    <Text style={styles.storyCardName}>{currentUserName}</Text>
+                  </LinearGradient>
+                </>
+              );
+            })()}
+          </TouchableOpacity>
+        )}
 
-              <LinearGradient
-                colors={['transparent', 'rgba(0,0,0,0.6)']}
-                style={styles.storyCardFooter}
-              >
-                <Text style={styles.storyCardName}>{currentUserName}</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          );
-        })}
-
-        {/* Loading Story (khi đang tạo story mới) */}
         {loading && (
           <View style={styles.storyCard}>
             <View style={[styles.storyCardImage, styles.loadingCard]}>
@@ -121,63 +139,50 @@ export const StoryList: React.FC<StoryListProps> = ({
           </View>
         )}
 
-        {/* Other Stories */}
-        {otherStories.map((story, index) => {
-          const imageUrl = story.images || (story.mediaIds && story.mediaIds.length > 0 ? story.mediaIds[0].url : story.authorAvatar);
-
-          return (
-            <TouchableOpacity
-              key={story._id}
-              style={styles.storyCard}
-              onPress={() => onStoryPress(story, index)}
-            >
-              <Image
-                source={{ uri: imageUrl }}
-                style={styles.storyCardImage}
-              />
-              
-              <View style={styles.storyCardOverlay} />
-              
-              {/* Avatar with gradient border */}
-              <View style={styles.storyHeader}>
-                <View style={styles.avatarContainer}>
-                  <Image
-                    source={{ uri: story.authorAvatar }}
-                    style={styles.storyAvatar}
+        {sortedOtherStories.map((story, index) => (
+          <TouchableOpacity
+            key={story._id}
+            style={styles.storyCard}
+            onPress={() => onStoryPress(story, index)}
+          >
+            <Image
+              source={{ 
+                uri: story.images || 
+                (story.mediaIds && story.mediaIds.length > 0 ? story.mediaIds[0].url : story.authorAvatar)
+              }}
+              style={styles.storyCardImage}
+            />
+            <View style={styles.storyCardOverlay} />
+            <View style={styles.storyHeader}>
+              <View style={styles.avatarContainer}>
+                <Image source={{ uri: story.authorAvatar }} style={styles.storyAvatar} />
+                {!story.viewed && (
+                  <LinearGradient
+                    colors={['#f59e0b', '#ef4444', '#ec4899']}
+                    style={styles.avatarBorder}
                   />
-                  {!story.viewed && (
-                    <LinearGradient
-                      colors={['#f59e0b', '#ef4444', '#ec4899']}
-                      style={styles.avatarBorder}
-                    />
-                  )}
-                </View>
+                )}
               </View>
-
-              {/* Music Badge */}
-              {story.songId && (
-                <View style={styles.musicBadge}>
-                  <Ionicons name="musical-notes" size={12} color="#fff" />
-                </View>
-              )}
-
-              {/* Name */}
-              <LinearGradient
-                colors={['transparent', 'rgba(0,0,0,0.6)']}
-                style={styles.storyCardFooter}
-              >
-                <Text style={styles.storyCardName} numberOfLines={2}>
-                  {story.authorName}
-                </Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          );
-        })}
+            </View>
+            {story.songId && (
+              <View style={styles.musicBadge}>
+                <Ionicons name="musical-notes" size={12} color="#fff" />
+              </View>
+            )}
+            <LinearGradient
+              colors={['transparent', 'rgba(0,0,0,0.6)']}
+              style={styles.storyCardFooter}
+            >
+              <Text style={styles.storyCardName} numberOfLines={2}>
+                {story.authorName}
+              </Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        ))}
       </ScrollView>
     </View>
   );
 };
-
 const styles = StyleSheet.create({
   container: {
     backgroundColor: '#fff',
