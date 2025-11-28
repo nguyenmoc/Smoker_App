@@ -20,7 +20,7 @@ export default function RootLayout() {
         <ThemeProvider value={colorScheme === 'light' ? DarkTheme : DefaultTheme}>
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="splash" />
-            <Stack.Screen name="(auth)" />
+            <Stack.Screen name="auth" />
             <Stack.Screen name="(tabs)" />
           </Stack>
           <StatusBar style="auto" />

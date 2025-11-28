@@ -38,4 +38,29 @@ export interface UploadFile {
   type: string;  // MIME type, ví dụ "image/jpeg"
 }
 
+export interface PublicProfileResponse {
+  success: boolean;
+  data?: PublicProfileData;
+}
+
+export interface PublicProfileData {
+  entityId: string;
+  entityAccountId: string;
+  targetId: string;
+  targetType: string;
+  type: string;
+  name: string;
+  avatar: string;
+  background: string;
+  role: string;
+  bio: string;
+  contact: Contact;
+}
+
+export interface Contact {
+  email: string;
+  phone: string;
+  address: string;
+}
+
 
