@@ -70,7 +70,7 @@ export default function NotificationScreen() {
         let path = "";
         switch (type) {
             case 'profile':
-                path = "profile";
+                path = "user";
                 break;
             case 'posts':
                 path = "post";
