@@ -4,7 +4,6 @@ import { StoryViewer } from '@/components/story/StoryViewer';
 import AnimatedHeader from '@/components/ui/AnimatedHeader';
 import { useAuth } from '@/hooks/useAuth';
 import { useFeed } from '@/hooks/useFeed';
-import { useSocket } from '@/hooks/useSocket';
 import { useStory } from '@/hooks/useStory';
 import { MessageApiService } from '@/services/messageApi';
 import { PostData } from '@/types/postType';
@@ -13,7 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { ResizeMode, Video } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -32,7 +31,6 @@ import {
   View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-  const { socket } = useSocket();
 const { width: screenWidth } = Dimensions.get('window');
 
 const PostInputBox = ({ openModal, pickMedia, avatar }: { openModal: () => void; pickMedia: () => void; avatar: string | undefined; }) => (
@@ -93,7 +91,7 @@ export default function HomeScreen() {
   }, [authState.token]);
 
   // Fetch unread count
-  useEffect(() => {
+  React.useEffect(() => {
     const fetchUnread = async () => {
       if (messageApi && entityAccountId) {
         try {
@@ -106,23 +104,6 @@ export default function HomeScreen() {
     };
     fetchUnread();
   }, [messageApi, entityAccountId]);
-
-  // Listen for new_message socket event to update unread count in realtime
-  useEffect(() => {
-    if (!socket) return;
-    const handleNewMessage = () => {
-      // Gọi lại API lấy số lượng tin nhắn chưa đọc
-      if (messageApi && entityAccountId) {
-        messageApi.getUnreadCount(entityAccountId)
-          .then(setUnreadCount)
-          .catch(() => setUnreadCount(0));
-      }
-    };
-    socket.on('new_message', handleNewMessage);
-    return () => {
-      socket.off('new_message', handleNewMessage);
-    };
-  }, [socket, messageApi, entityAccountId]);
 
   // Story states
   const [storyViewerVisible, setStoryViewerVisible] = useState(false);
