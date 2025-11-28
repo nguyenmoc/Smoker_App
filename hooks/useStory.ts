@@ -15,7 +15,6 @@ export const useStory = () => {
 
   const token = authState.token;
   const entityAccountId = authState.EntityAccountId;
-  const accountId = authState.currentId;
   const storyApi = new StoryApiService(token!!);
 
   /**
@@ -76,7 +75,6 @@ export const useStory = () => {
         setUploading(false);
         setUploadProgress(0);
         
-        // ✅ Fetch lại toàn bộ stories để có data đầy đủ
         await fetchStories(true);
         
         return true;
@@ -112,17 +110,15 @@ export const useStory = () => {
 
         const updatedLikes = { ...story.likes };
         if (isLiked) {
-          // Unlike
           for (const key in updatedLikes) {
             if (updatedLikes[key].entityAccountId === entityAccountId) {
               delete updatedLikes[key];
             }
           }
         } else {
-          // Like
           const newKey = Math.random().toString(36).substring(2, 15);
           updatedLikes[newKey] = {
-            accountId: accountId,
+            accountId: entityAccountId,
             entityAccountId: entityAccountId,
             TypeRole: 'Account',
           };
@@ -135,7 +131,7 @@ export const useStory = () => {
     try {
       const story = stories.find(s => s._id === storyId);
       const isLiked = !!story && !!Object.values(story.likes || {}).find(
-        like => like.accountId === entityAccountId
+        like => like.entityAccountId === entityAccountId
       );
 
       const response = isLiked

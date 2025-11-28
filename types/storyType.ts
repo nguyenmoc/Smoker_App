@@ -4,8 +4,8 @@ export interface StoryData {
   authorName: string;
   authorAvatar: string;
   content: string;
-  images?: string; // ✅ String URL từ API
-  videos?: string; // ✅ String URL từ API (nếu có)
+  images?: string;
+  videos?: string;
   songId?: {
     _id: string;
     title: string;
