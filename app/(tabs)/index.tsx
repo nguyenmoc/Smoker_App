@@ -1,7 +1,12 @@
+import { CreateStoryModal } from '@/components/story/CreateStoryModal';
+import { StoryList } from '@/components/story/StoryList';
+import { StoryViewer } from '@/components/story/StoryViewer';
 import AnimatedHeader from '@/components/ui/AnimatedHeader';
 import { useAuth } from '@/hooks/useAuth';
 import { useFeed } from '@/hooks/useFeed';
+import { useStory } from '@/hooks/useStory';
 import { PostData } from '@/types/postType';
+import { StoryData } from '@/types/storyType';
 import { Ionicons } from '@expo/vector-icons';
 import { ResizeMode, Video } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
@@ -28,7 +33,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width: screenWidth } = Dimensions.get('window');
 
-const PostInputBox = ({ openModal, pickMedia, avatar }: { openModal: () => void; pickMedia: () => void; avatar: string | undefined;}) => (
+const PostInputBox = ({ openModal, pickMedia, avatar }: { openModal: () => void; pickMedia: () => void; avatar: string | undefined; }) => (
   <View style={styles.postBox}>
     <Image
       source={{ uri: avatar ?? 'https://i.pravatar.cc/100?img=10' }}
@@ -43,7 +48,6 @@ const PostInputBox = ({ openModal, pickMedia, avatar }: { openModal: () => void;
   </View>
 );
 
-// ✅ Simple progress bar như Facebook - chỉ có thanh progress thôi!
 const UploadingProgressBar = ({ progress }: { progress: number }) => (
   <View style={styles.uploadingContainer}>
     <View style={styles.uploadingContent}>
@@ -51,11 +55,11 @@ const UploadingProgressBar = ({ progress }: { progress: number }) => (
       <Text style={styles.uploadingLabel}>Đang đăng bài viết...</Text>
     </View>
     <View style={styles.simpleProgressBar}>
-      <Animated.View 
+      <Animated.View
         style={[
-          styles.simpleProgressFill, 
+          styles.simpleProgressFill,
           { width: `${progress}%` }
-        ]} 
+        ]}
       />
     </View>
   </View>
@@ -71,6 +75,13 @@ export default function HomeScreen() {
   const { authState } = useAuth();
   const currentUserId = authState.currentId;
   const avartarAuthor = authState.avatar;
+  const entityAccountId = authState.EntityAccountId;
+  const currentUserName = authState.userEmail || 'Bạn';
+
+  // Story states
+  const [storyViewerVisible, setStoryViewerVisible] = useState(false);
+  const [currentStoryIndex, setCurrentStoryIndex] = useState(0);
+  const [createStoryModalVisible, setCreateStoryModalVisible] = useState(false);
 
   const {
     posts,
@@ -85,6 +96,18 @@ export default function HomeScreen() {
     loadMore,
     hasMore
   } = useFeed();
+
+  const {
+    stories,
+    loading: storiesLoading,
+    uploading: storyUploading,
+    uploadProgress: storyUploadProgress,
+    createStory,
+    likeStory,
+    markAsViewed,
+    deleteStory,
+    refresh: refreshStories,
+  } = useStory();
 
   const pickMedia = useCallback(async () => {
     try {
@@ -101,12 +124,12 @@ export default function HomeScreen() {
           uri: asset.uri,
           type: (asset.type === 'video' ? 'video' : 'image') as 'image' | 'video',
         }));
-        
+
         if (media.length > 5) {
           Alert.alert('Thông báo', 'Bạn chỉ có thể chọn tối đa 5 file');
           return;
         }
-        
+
         setSelectedMedia(prev => {
           const newMedia = [...prev, ...media];
           if (newMedia.length > 5) {
@@ -191,6 +214,28 @@ export default function HomeScreen() {
     });
   }, [router]);
 
+  // Story handlers
+  const handleStoryPress = useCallback((story: StoryData, index: number) => {
+    setCurrentStoryIndex(index);
+    setStoryViewerVisible(true);
+  }, []);
+
+  const handleCreateStory = useCallback(() => {
+    setCreateStoryModalVisible(true);
+  }, []);
+
+  const handleSubmitStory = useCallback(async (storyData: any) => {
+    const success = await createStory(storyData);
+    if (success) {
+      Alert.alert('Thành công', 'Story đã được đăng!');
+    }
+  }, [createStory]);
+
+  const handleRefresh = useCallback(() => {
+    refresh();
+    refreshStories();
+  }, [refresh, refreshStories]);
+
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -216,7 +261,7 @@ export default function HomeScreen() {
     }));
   };
 
-  const renderMediaItem = (mediaUrl: string, isVideo: boolean = false) => {    
+  const renderMediaItem = (mediaUrl: string, isVideo: boolean = false) => {
     if (isVideo) {
       return (
         <Video
@@ -245,7 +290,7 @@ export default function HomeScreen() {
       like => like.accountId === currentUserId
     );
 
-    let mediaItems = item.medias || item.mediaIds || [];    
+    let mediaItems = item.medias || item.mediaIds || [];
     const imageMedias = mediaItems.filter(m => m.type === 'image');
     const videoMedias = mediaItems.filter(m => m.type === 'video');
     const hasMedia = mediaItems.length > 0;
@@ -253,17 +298,11 @@ export default function HomeScreen() {
     return (
       <View style={styles.card}>
         <View style={styles.cardHeader}>
-          <TouchableOpacity onPress={() => {
-            console.log('entityAccountId khi nhấp vào avatar:', item.authorEntityAccountId);
-            handleUserPress(item.authorEntityAccountId);
-          }}>
+          <TouchableOpacity onPress={() => handleUserPress(item.authorEntityAccountId)}>
             <Image source={{ uri: item.authorAvatar }} style={styles.avatar} />
           </TouchableOpacity>
           <View style={styles.headerInfo}>
-            <TouchableOpacity onPress={() => {
-              console.log('entityAccountId khi nhấp vào tên:', item.authorEntityAccountId);
-              handleUserPress(item.authorEntityAccountId);
-            }}>
+            <TouchableOpacity onPress={() => handleUserPress(item.authorEntityAccountId)}>
               <Text style={styles.username}>{item.authorName}</Text>
             </TouchableOpacity>
             <Text style={styles.subText}>
@@ -372,8 +411,6 @@ export default function HomeScreen() {
         title="Smoker App"
         subtitle="Chia sẻ khoảnh khắc"
         headerTranslateY={headerTranslateY}
-        iconName="chatbubble-outline"
-        onIconPress={() => router.push('/chat')}
       />
 
       <Animated.FlatList
@@ -384,9 +421,17 @@ export default function HomeScreen() {
         contentContainerStyle={{ paddingBottom: 40 }}
         ListHeaderComponent={
           <>
-            <PostInputBox openModal={openModal} pickMedia={pickMedia} avatar={avartarAuthor}/>
-            
-            {/* ✅ Simple progress bar - chỉ có thanh thôi! */}
+            <PostInputBox openModal={openModal} pickMedia={pickMedia} avatar={avartarAuthor} />
+
+            <StoryList
+              stories={stories}
+              currentUserAvatar={avartarAuthor}
+              currentUserName={'Bạn'}
+              onStoryPress={handleStoryPress}
+              onCreateStory={handleCreateStory}
+              loading={storyUploading}
+            />
+
             {uploading && (
               <UploadingProgressBar progress={uploadProgress} />
             )}
@@ -396,7 +441,7 @@ export default function HomeScreen() {
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
-            onRefresh={refresh}
+            onRefresh={handleRefresh}
             colors={['#2563eb']}
             tintColor="#2563eb"
           />
@@ -420,6 +465,7 @@ export default function HomeScreen() {
         scrollEventThrottle={16}
       />
 
+      {/* Post Modal */}
       <Modal
         animationType="slide"
         transparent={true}
@@ -508,6 +554,28 @@ export default function HomeScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Story Viewer */}
+      <StoryViewer
+        visible={storyViewerVisible}
+        stories={stories}
+        initialIndex={currentStoryIndex}
+        currentUserEntityAccountId={entityAccountId}
+        onClose={() => setStoryViewerVisible(false)}
+        onLike={likeStory}
+        onMarkAsViewed={markAsViewed}
+        onDelete={deleteStory}
+      />
+
+      {/* Create Story Modal */}
+      <CreateStoryModal
+        visible={createStoryModalVisible}
+        uploading={storyUploading}
+        uploadProgress={storyUploadProgress}
+        currentUserAvatar={avartarAuthor}
+        onClose={() => setCreateStoryModalVisible(false)}
+        onSubmit={handleSubmitStory}
+      />
     </SafeAreaView>
   );
 }
@@ -639,8 +707,6 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     fontWeight: '500',
   },
-
-  // ✅ Simple progress bar (giống Facebook)
   uploadingContainer: {
     backgroundColor: '#fff',
     marginHorizontal: 8,
@@ -674,8 +740,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#2563eb',
     borderRadius: 2,
   },
-
-  // Modal Styles
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
