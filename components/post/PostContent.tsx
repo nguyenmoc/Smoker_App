@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import {formatTime} from "@/utils/formatDate";
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -36,16 +37,6 @@ export const PostContent: React.FC<PostContentProps> = ({
   const isLiked = currentUserId
     ? Object.values(post.likes || {}).some(like => like.accountId === currentUserId)
     : false;
-
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
-
-    if (diffInHours < 1) return 'Vừa xong';
-    if (diffInHours < 24) return `${diffInHours} giờ trước`;
-    return `${Math.floor(diffInHours / 24)} ngày trước`;
-  };
 
   const handleImageScroll = (event: any) => {
     const contentOffsetX = event.nativeEvent.contentOffset.x;

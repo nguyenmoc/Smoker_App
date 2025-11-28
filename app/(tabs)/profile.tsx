@@ -27,6 +27,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {formatTime} from "@/utils/formatDate";
 
 const { width: screenWidth } = Dimensions.get('window');
 const PHOTO_SIZE = (screenWidth - 4) / 3;
@@ -260,15 +261,6 @@ export default function ProfileScreen() {
     if (success) {
       Alert.alert('Thành công', 'Đã cập nhật thông tin');
     }
-  };
-
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
-    if (diffInHours < 1) return 'Vừa xong';
-    if (diffInHours < 24) return `${diffInHours} giờ trước`;
-    return `${Math.floor(diffInHours / 24)} ngày trước`;
   };
 
   const ProfileItem = ({
