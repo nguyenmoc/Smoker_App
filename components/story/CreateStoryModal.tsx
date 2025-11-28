@@ -1,18 +1,21 @@
 import { CreateStoryData } from '@/types/storyType';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  Keyboard,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
 interface CreateStoryModalProps {
@@ -38,6 +41,21 @@ export const CreateStoryModal: React.FC<CreateStoryModalProps> = ({
     type: string;
     name: string;
   } | null>(null);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => {
+      setKeyboardVisible(true);
+    });
+    const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardVisible(false);
+    });
+
+    return () => {
+      keyboardDidShowListener?.remove();
+      keyboardDidHideListener?.remove();
+    };
+  }, []);
 
   const pickImage = async () => {
     try {
@@ -85,6 +103,7 @@ export const CreateStoryModal: React.FC<CreateStoryModalProps> = ({
   const handleClose = () => {
     setContent('');
     setSelectedImage(null);
+    setKeyboardVisible(false);
     onClose();
   };
 
@@ -95,101 +114,103 @@ export const CreateStoryModal: React.FC<CreateStoryModalProps> = ({
       transparent={true}
       onRequestClose={handleClose}
     >
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
-          {/* Header */}
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Tạo Story</Text>
-            <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-              <Ionicons name="close" size={24} color="#6b7280" />
-            </TouchableOpacity>
-          </View>
-
-          {/* Body */}
-          <ScrollView
-            style={styles.modalBody}
-            showsVerticalScrollIndicator={false}
-          >
-            {/* User Info */}
-            <View style={styles.userInfo}>
-              <Image
-                source={{ uri: currentUserAvatar || 'https://i.pravatar.cc/100?img=10' }}
-                style={styles.avatar}
-              />
-              <Text style={styles.username}>Story của bạn</Text>
-            </View>
-
-            {/* Image Preview */}
-            {selectedImage ? (
-              <View style={styles.imagePreviewContainer}>
-                <Image
-                  source={{ uri: selectedImage.uri }}
-                  style={styles.imagePreview}
-                  resizeMode="cover"
-                />
-                <TouchableOpacity
-                  style={styles.removeImageButton}
-                  onPress={removeImage}
-                >
-                  <Ionicons name="close-circle" size={32} color="#ef4444" />
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <TouchableOpacity
-                style={styles.addImageButton}
-                onPress={pickImage}
-              >
-                <Ionicons name="image-outline" size={48} color="#2563eb" />
-                <Text style={styles.addImageText}>Thêm ảnh</Text>
+      <KeyboardAvoidingView
+        style={styles.keyboardAvoidingView}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            {/* Header */}
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Tạo Story</Text>
+              <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
+                <Ionicons name="close" size={24} color="#6b7280" />
               </TouchableOpacity>
-            )}
-
-            {/* Content Input */}
-            <TextInput
-              placeholder="Chia sẻ cảm xúc của bạn..."
-              multiline
-              style={styles.input}
-              value={content}
-              onChangeText={setContent}
-              placeholderTextColor="#9ca3af"
-            />
-
-            {/* Tips */}
-            <View style={styles.tipsContainer}>
-              <Ionicons name="information-circle-outline" size={20} color="#6b7280" />
-              <Text style={styles.tipsText}>
-                Story sẽ tự động xóa sau 24 giờ
-              </Text>
             </View>
-          </ScrollView>
 
-          {/* Submit Button */}
-          {uploading ? (
-            <View style={styles.uploadingContainer}>
-              <ActivityIndicator size="small" color="#2563eb" />
-              <Text style={styles.uploadingText}>
-                Đang đăng... {uploadProgress}%
-              </Text>
-            </View>
-          ) : (
-            <TouchableOpacity
-              style={[
-                styles.submitButton,
-                (!content.trim() && !selectedImage) && styles.submitButtonDisabled,
-              ]}
-              onPress={handleSubmit}
-              disabled={!content.trim() && !selectedImage}
+            <ScrollView
+              style={styles.modalBody}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
             >
-              <Text style={styles.submitButtonText}>Đăng Story</Text>
-            </TouchableOpacity>
-          )}
+              {/* User Info */}
+              <View style={styles.userInfo}>
+                <Image
+                  source={{ uri: currentUserAvatar || 'https://i.pravatar.cc/100?img=10' }}
+                  style={styles.avatar}
+                />
+                <Text style={styles.username}>Story của bạn</Text>
+              </View>
+
+              {/* Image Preview hoặc Add Image Button */}
+              {selectedImage ? (
+                <View style={styles.imagePreviewContainer}>
+                  <Image
+                    source={{ uri: selectedImage.uri }}
+                    style={styles.imagePreview}
+                    resizeMode="cover"
+                  />
+                  <TouchableOpacity style={styles.removeImageButton} onPress={removeImage}>
+                    <Ionicons name="close-circle" size={32} color="#ef4444" />
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <TouchableOpacity style={styles.addImageButton} onPress={pickImage}>
+                  <Ionicons name="image-outline" size={48} color="#2563eb" />
+                  <Text style={styles.addImageText}>Thêm ảnh</Text>
+                </TouchableOpacity>
+              )}
+
+              {/* Content Input */}
+              <TextInput
+                placeholder="Chia sẻ cảm xúc của bạn..."
+                multiline
+                style={styles.input}
+                value={content}
+                onChangeText={setContent}
+                placeholderTextColor="#9ca3af"
+                textAlignVertical="top"
+              />
+
+              {/* Tips */}
+              <View style={styles.tipsContainer}>
+                <Ionicons name="information-circle-outline" size={20} color="#6b7280" />
+                <Text style={styles.tipsText}>Story sẽ tự động xóa sau 24 giờ</Text>
+              </View>
+            </ScrollView>
+
+            {/* Submit Button - Fixed position */}
+            <View style={styles.footer}>
+              {uploading ? (
+                <View style={styles.uploadingContainer}>
+                  <ActivityIndicator size="small" color="#2563eb" />
+                  <Text style={styles.uploadingText}>Đang đăng... {uploadProgress}%</Text>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={[
+                    styles.submitButton,
+                    (!content.trim() && !selectedImage) && styles.submitButtonDisabled,
+                  ]}
+                  onPress={handleSubmit}
+                  disabled={!content.trim() && !selectedImage}
+                >
+                  <Text style={styles.submitButtonText}>Đăng Story</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };
 
 const styles = StyleSheet.create({
+  keyboardAvoidingView: {
+    flex: 1,
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -199,12 +220,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    height: '85%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 10,
+    maxHeight: '90%',
+    flex: 1,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -255,7 +272,7 @@ const styles = StyleSheet.create({
   },
   imagePreview: {
     width: '100%',
-    height: 400,
+    height: 350, // Giảm chiều cao để có thêm không gian cho nội dung
     backgroundColor: '#f3f4f6',
   },
   removeImageButton: {
@@ -292,11 +309,11 @@ const styles = StyleSheet.create({
     color: '#111827',
     textAlignVertical: 'top',
     backgroundColor: '#f9fafb',
+    marginBottom: 16,
   },
   tipsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 16,
     padding: 12,
     backgroundColor: '#eff6ff',
     borderRadius: 8,
@@ -306,12 +323,18 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#6b7280',
   },
+  footer: {
+    padding: 16,
+    paddingBottom: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+    backgroundColor: '#fff',
+  },
   uploadingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 16,
-    margin: 16,
     backgroundColor: '#eff6ff',
     borderRadius: 12,
   },
@@ -324,7 +347,6 @@ const styles = StyleSheet.create({
   submitButton: {
     backgroundColor: '#2563eb',
     padding: 16,
-    margin: 16,
     borderRadius: 12,
     alignItems: 'center',
   },

@@ -36,14 +36,6 @@ export const StoryList: React.FC<StoryListProps> = ({
   const myStories = stories.filter(s => s.isOwner);
   const otherStories = stories.filter(s => !s.isOwner);
 
-  // Debug logs
-  console.log('📊 StoryList Debug:', {
-    totalStories: stories.length,
-    myStories: myStories.length,
-    otherStories: otherStories.length,
-    loading,
-  });
-
   return (
     <View style={styles.container}>
       <ScrollView
