@@ -1,4 +1,5 @@
 import { AuthState, Role } from '@/constants/authData';
+import { useAuthContext } from '@/contexts/AuthProvider';
 import { fetchUserEntities, loginApi, upgradeRoleApi } from '@/services/authApi';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
@@ -7,16 +8,7 @@ import { Alert } from 'react-native';
 
 export const useAuth = () => {
   const router = useRouter();
-  const [authState, setAuthState] = useState<AuthState>({
-    isAuthenticated: false,
-    userEmail: undefined,
-    role: undefined,
-    token: undefined,
-    currentId: undefined,
-    avatar: undefined,
-    type: undefined,
-    EntityAccountId: undefined,
-  });
+  const { authState, setAuthState } = useAuthContext();
   const [isLoading, setIsLoading] = useState(false);
 
   // Load state login nếu user nhớ đăng nhập
