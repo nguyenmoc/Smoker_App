@@ -4,6 +4,7 @@ import { StoryViewer } from '@/components/story/StoryViewer';
 import AnimatedHeader from '@/components/ui/AnimatedHeader';
 import { useAuth } from '@/hooks/useAuth';
 import { useFeed } from '@/hooks/useFeed';
+import { useSocket } from '@/hooks/useSocket';
 import { useStory } from '@/hooks/useStory';
 import { MessageApiService } from '@/services/messageApi';
 import { PostData } from '@/types/postType';
@@ -12,7 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { ResizeMode, Video } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -78,6 +79,7 @@ export default function HomeScreen() {
   const avartarAuthor = authState.avatar;
   const entityAccountId = authState.EntityAccountId;
   const currentUserName = authState.userEmail || 'Bạn';
+  const { socket } = useSocket();
 
   // Unread count state
   const [unreadCount, setUnreadCount] = useState<number>(0);
@@ -91,7 +93,7 @@ export default function HomeScreen() {
   }, [authState.token]);
 
   // Fetch unread count
-  React.useEffect(() => {
+  useEffect(() => {
     const fetchUnread = async () => {
       if (messageApi && entityAccountId) {
         try {
@@ -104,6 +106,22 @@ export default function HomeScreen() {
     };
     fetchUnread();
   }, [messageApi, entityAccountId]);
+
+  //realtime
+  useEffect(() => {
+    if (!socket) return;
+    const handleNewMessage = () => {
+      if (messageApi && entityAccountId) {
+        messageApi.getUnreadCount(entityAccountId)
+          .then(setUnreadCount)
+          .catch(() => setUnreadCount(0));
+      }
+    };
+    socket.on('new_message', handleNewMessage);
+    return () => {
+      socket.off('new_message', handleNewMessage);
+    };
+  }, [socket, messageApi, entityAccountId]);
 
   // Story states
   const [storyViewerVisible, setStoryViewerVisible] = useState(false);
