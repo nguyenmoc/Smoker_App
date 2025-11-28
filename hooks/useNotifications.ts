@@ -57,7 +57,7 @@ export const useNotifications = () => {
   const markAsRead = useCallback(
     async (id: string) => {
       try {
-        const response = await notificationApi.markAsRead(id);
+        const response = await notificationApi.markAsRead(id, accountId);
         if (response.success) {
           await fetchNotifications(); // Làm mới danh sách sau khi cập nhật
         } else {

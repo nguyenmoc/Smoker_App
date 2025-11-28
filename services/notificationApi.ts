@@ -62,8 +62,8 @@ class NotificationApiService {
     }
 
     // Đánh dấu một notification đã đọc
-    async markAsRead(id: string): Promise<ApiResponse<null>> {
-        return this.makeRequest<null>(`/notifications/${id}/read`, {
+    async markAsRead(id: string, accountId: string): Promise<ApiResponse<null>> {
+        return this.makeRequest<null>(`/notifications/${id}/read?entityAccountId=${accountId}`, {
             method: 'PATCH',
             body: JSON.stringify({isRead: true}),
         });
