@@ -68,9 +68,8 @@ export const StoryList: React.FC<StoryListProps> = ({
           </View>
         </TouchableOpacity>
 
-        {/* My Stories - Hiển thị nếu có */}
         {myStories.map((story, index) => {
-          const hasMedia = story.mediaIds && story.mediaIds.length > 0;
+          const imageUrl = story.images || (story.mediaIds && story.mediaIds.length > 0 ? story.mediaIds[0].url : null);
           
           return (
             <TouchableOpacity
@@ -78,9 +77,9 @@ export const StoryList: React.FC<StoryListProps> = ({
               style={styles.storyCard}
               onPress={() => onStoryPress(story, index)}
             >
-              {hasMedia ? (
+              {imageUrl ? (
                 <Image
-                  source={{ uri: story.mediaIds[0].url }}
+                  source={{ uri: imageUrl }}
                   style={styles.storyCardImage}
                 />
               ) : (
@@ -105,9 +104,12 @@ export const StoryList: React.FC<StoryListProps> = ({
                 </View>
               </View>
 
-              <View style={styles.storyCardFooter}>
+              <LinearGradient
+                colors={['transparent', 'rgba(0,0,0,0.6)']}
+                style={styles.storyCardFooter}
+              >
                 <Text style={styles.storyCardName}>{currentUserName}</Text>
-              </View>
+              </LinearGradient>
             </TouchableOpacity>
           );
         })}
@@ -118,16 +120,18 @@ export const StoryList: React.FC<StoryListProps> = ({
             <View style={[styles.storyCardImage, styles.loadingCard]}>
               <ActivityIndicator size="large" color="#2563eb" />
             </View>
-            <View style={styles.storyCardFooter}>
+            <LinearGradient
+              colors={['transparent', 'rgba(0,0,0,0.6)']}
+              style={styles.storyCardFooter}
+            >
               <Text style={styles.storyCardName}>Đang đăng...</Text>
-            </View>
+            </LinearGradient>
           </View>
         )}
 
         {/* Other Stories */}
         {otherStories.map((story, index) => {
-          const hasMedia = story.mediaIds && story.mediaIds.length > 0;
-          const backgroundImage = hasMedia ? story.mediaIds[0].url : story.authorAvatar;
+          const imageUrl = story.images || (story.mediaIds && story.mediaIds.length > 0 ? story.mediaIds[0].url : story.authorAvatar);
 
           return (
             <TouchableOpacity
@@ -136,7 +140,7 @@ export const StoryList: React.FC<StoryListProps> = ({
               onPress={() => onStoryPress(story, index)}
             >
               <Image
-                source={{ uri: backgroundImage }}
+                source={{ uri: imageUrl }}
                 style={styles.storyCardImage}
               />
               
@@ -166,11 +170,14 @@ export const StoryList: React.FC<StoryListProps> = ({
               )}
 
               {/* Name */}
-              <View style={styles.storyCardFooter}>
+              <LinearGradient
+                colors={['transparent', 'rgba(0,0,0,0.6)']}
+                style={styles.storyCardFooter}
+              >
                 <Text style={styles.storyCardName} numberOfLines={2}>
                   {story.authorName}
                 </Text>
-              </View>
+              </LinearGradient>
             </TouchableOpacity>
           );
         })}
@@ -243,7 +250,6 @@ const styles = StyleSheet.create({
     right: 0,
     padding: 8,
     paddingTop: 24,
-    background: 'linear-gradient(transparent, rgba(0,0,0,0.6))',
   },
   storyCardName: {
     color: '#fff',

@@ -15,6 +15,7 @@ export const useStory = () => {
 
   const token = authState.token;
   const entityAccountId = authState.EntityAccountId;
+  const accountId = authState.currentId;
   const storyApi = new StoryApiService(token!!);
 
   /**
@@ -36,8 +37,6 @@ export const useStory = () => {
     try {
       // Không exclude viewed stories để user có thể xem lại
       const response = await storyApi.getStories(entityAccountId, 1, 50, false);
-      console.log(response);
-      
       
       if (response.success && response.data) {
         // Đánh dấu story nào là của mình
@@ -69,27 +68,16 @@ export const useStory = () => {
       setUploadProgress(30);
 
       const response = await storyApi.createStory(storyData);
-      console.log(storyData);
-      
-      console.log('create story>>>', response);
-      
       
       if (response.success && response.data) {
         setUploadProgress(100);
         
-        // Thêm story mới vào đầu danh sách với isOwner = true
-        const newStory = {
-          ...response.data,
-          isOwner: true
-        };
+        // Reset uploading state
+        setUploading(false);
+        setUploadProgress(0);
         
-        setStories(prev => [newStory, ...prev]);
-        
-        // Delay một chút để user thấy progress 100%
-        setTimeout(() => {
-          setUploading(false);
-          setUploadProgress(0);
-        }, 500);
+        // ✅ Fetch lại toàn bộ stories để có data đầy đủ
+        await fetchStories(true);
         
         return true;
       } else {
@@ -119,14 +107,14 @@ export const useStory = () => {
         if (story._id !== storyId) return story;
 
         const isLiked = !!Object.values(story.likes || {}).find(
-          like => like.accountId === entityAccountId
+          like => like.entityAccountId === entityAccountId
         );
 
         const updatedLikes = { ...story.likes };
         if (isLiked) {
           // Unlike
           for (const key in updatedLikes) {
-            if (updatedLikes[key].accountId === entityAccountId) {
+            if (updatedLikes[key].entityAccountId === entityAccountId) {
               delete updatedLikes[key];
             }
           }
@@ -134,7 +122,8 @@ export const useStory = () => {
           // Like
           const newKey = Math.random().toString(36).substring(2, 15);
           updatedLikes[newKey] = {
-            accountId: entityAccountId,
+            accountId: accountId,
+            entityAccountId: entityAccountId,
             TypeRole: 'Account',
           };
         }

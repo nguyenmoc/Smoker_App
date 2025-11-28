@@ -48,7 +48,7 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
   const currentStory = stories[currentIndex];
   const isOwner = currentStory?.entityAccountId === currentUserEntityAccountId;
   const isLiked = !!currentUserEntityAccountId && !!Object.values(currentStory?.likes || {}).find(
-    like => like.accountId === currentUserEntityAccountId
+    like => like.entityAccountId === currentUserEntityAccountId
   );
   const likeCount = Object.keys(currentStory?.likes || {}).length;
 
@@ -184,9 +184,9 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
       
       <View style={styles.container}>
         {/* Background Image */}
-        {currentStory.mediaIds && currentStory.mediaIds.length > 0 ? (
+        {currentStory.images ? (
           <Image
-            source={{ uri: currentStory.mediaIds[0].url }}
+            source={{ uri: currentStory.images }}
             style={styles.backgroundImage}
             resizeMode="cover"
           />

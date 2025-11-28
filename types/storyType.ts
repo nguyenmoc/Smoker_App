@@ -4,6 +4,8 @@ export interface StoryData {
   authorName: string;
   authorAvatar: string;
   content: string;
+  images?: string; // ✅ String URL từ API
+  videos?: string; // ✅ String URL từ API (nếu có)
   songId?: {
     _id: string;
     title: string;
@@ -21,6 +23,7 @@ export interface StoryData {
   likes?: {
     [key: string]: {
       accountId: string;
+      entityAccountId: string;
       TypeRole: string;
     };
   };
