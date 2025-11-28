@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import {formatTime} from "@/utils/formatDate";
 
 interface CommentsListProps {
   comments: CommentsMap; // <-- object {id: Comment}
@@ -22,17 +23,7 @@ export const CommentsList: React.FC<CommentsListProps> = ({
 }) => {
 
   // Convert object -> array
-  const commentList = Object.values(comments); 
-
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
-
-    if (diffInHours < 1) return 'Vừa xong';
-    if (diffInHours < 24) return `${diffInHours} giờ trước`;
-    return `${Math.floor(diffInHours / 24)} ngày trước`;
-  };
+  const commentList = Object.values(comments);
 
   const CommentItem = ({ comment }: { comment: CommentData }) => (
     <View style={styles.commentItem}>
