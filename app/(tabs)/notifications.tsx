@@ -62,10 +62,9 @@ export default function NotificationScreen() {
 
     // Handle notification press
     const handleNotificationPress = useCallback((notification: Notification) => {
-        //if (!(notification.status == "Read")) {
-        console.log(notification)
+        if (!(notification.status == "Read")) {
             markAsRead(notification._id);
-        //}
+        }
 
         const [, type, id] = notification.link.split("/");
         let path = "";

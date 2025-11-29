@@ -20,6 +20,7 @@ import {
     View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import {formatTime} from "@/utils/formatDate";
 
 const { width: screenWidth } = Dimensions.get('window');
 const imageSize = (screenWidth - 32 - 8) / 3;
@@ -28,7 +29,7 @@ export default function UserProfileScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { authState } = useAuth();
-  const { user, posts, loading, followUser } = useUserProfile(id!);
+  const { user, posts, loading, followUser, unFollowUser } = useUserProfile(id!);
   const scrollY = useRef(new Animated.Value(0)).current;
   const AnimatedFlatList = Animated.createAnimatedComponent(FlatList);
 
@@ -58,6 +59,10 @@ export default function UserProfileScreen() {
 
   const handleFollowPress = () => {
     followUser();
+  };
+
+  const handleUnFollowPress = () => {
+    unFollowUser();
   };
 
   const handleMessagePress = async () => {
@@ -118,34 +123,45 @@ export default function UserProfileScreen() {
   };
 
 
-  const renderPostItem = ({ item }: { item: Post }) => (
-    <TouchableOpacity
-      style={styles.postItem}
-      onPress={() => handlePostPress(item.id)}
-    >
-      <Image
-        source={{ uri: item.images[0] || 'https://picsum.photos/200/200?random=' + item.id }}
-        style={styles.postImage}
-        resizeMode="cover"
-      />
-      {item.images.length > 1 && (
-        <View style={styles.multipleImagesIndicator}>
-          <Ionicons name="copy-outline" size={16} color="#fff" />
-        </View>
-      )}
-      <View style={styles.postStats}>
-        <View style={styles.postStat}>
-          <Ionicons name="heart" size={12} color="#fff" />
-          <Text style={styles.postStatText}>{item.likes}</Text>
-        </View>
-        {item.commentsCount > 0 && (
-          <View style={styles.postStat}>
-            <Ionicons name="chatbubble" size={12} color="#fff" />
-            <Text style={styles.postStatText}>{item.commentsCount}</Text>
-          </View>
-        )}
+  const renderPostItem = ({ item }: { item: any }) => (
+      <View style={styles.postCard}>
+          <TouchableOpacity onPress={() => handlePostPress(item._id)}>
+              <Text style={styles.postContent}>{item.content}</Text>
+          </TouchableOpacity>
+
+          {item.images.length > 0 ? (
+              <FlatList
+                  data={item.images}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  keyExtractor={(image, index) => `${item._id}-img-${index}`}
+                  renderItem={({ item: image }) => (
+                      <Image source={{ uri: image }} style={styles.postImage} />
+                  )}
+                  style={styles.postImages}
+              />
+          ) : (
+              <View style={styles.postImages}>
+                  <Image source={require('@/assets/images/notfound.jpg')} style={styles.postImage} />
+              </View>
+          )}
+
+          <TouchableOpacity onPress={() => handlePostPress(item._id)}>
+              <View style={styles.postFooter}>
+                  <View style={styles.postStats}>
+                      <View style={styles.postStat}>
+                          <Ionicons name="heart" size={16} color="#ef4444" />
+                          <Text style={styles.postStatText}>{item?.likes.length ?? 0}</Text>
+                      </View>
+                      <View style={styles.postStat}>
+                          <Ionicons name="chatbubble" size={16} color="#6b7280" />
+                          <Text style={styles.postStatText}>{item?.comments.length ?? 0}</Text>
+                      </View>
+                  </View>
+                  <Text style={styles.postTime}>{formatTime(item.createdAt)}</Text>
+              </View>
+          </TouchableOpacity>
       </View>
-    </TouchableOpacity>
   );
 
   const renderHeader = () => (
@@ -239,7 +255,7 @@ export default function UserProfileScreen() {
                 styles.followButton,
                 user?.isFollowing && styles.followingButton
               ]}
-              onPress={handleFollowPress}
+              onPress={user?.isFollowing ? handleUnFollowPress : handleFollowPress}
             >
               <Ionicons
                 name={user?.isFollowing ? "checkmark" : "person-add"}
@@ -248,7 +264,7 @@ export default function UserProfileScreen() {
               />
               <Text style={[
                 styles.followButtonText,
-                user?.isFollowing && styles.followingButtonText
+                  user?.isFollowing && styles.followingButtonText
               ]}>
                 {user?.isFollowing ? 'Đang theo dõi' : 'Theo dõi'}
               </Text>
@@ -343,7 +359,6 @@ export default function UserProfileScreen() {
         keyExtractor={(item: any) => item.id}
         numColumns={3}
         ListHeaderComponent={renderHeader}
-        contentContainerStyle={styles.flatListContent}
         showsVerticalScrollIndicator={false}
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
@@ -572,11 +587,6 @@ const styles = StyleSheet.create({
     margin: 4,
     position: 'relative',
   },
-  postImage: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 8,
-  },
   multipleImagesIndicator: {
     position: 'absolute',
     top: 8,
@@ -584,28 +594,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.6)',
     borderRadius: 12,
     padding: 4,
-  },
-  postStats: {
-    position: 'absolute',
-    bottom: 8,
-    left: 8,
-    right: 8,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  postStat: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 10,
-  },
-  postStatText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '500',
-    marginLeft: 4,
   },
   emptyContainer: {
     alignItems: 'center',
@@ -660,4 +648,56 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e5e7eb',
   },
+    postCard: {
+        backgroundColor: '#fff',
+        marginHorizontal: 12,
+        marginTop: 12,
+        padding: 16,
+        borderRadius: 12,
+        shadowColor: '#000',
+        shadowOpacity: 0.05,
+        shadowOffset: { width: 0, height: 2 },
+        shadowRadius: 8,
+        elevation: 3,
+    },
+    postContent: {
+        fontSize: 15,
+        color: '#374151',
+        lineHeight: 22,
+        marginBottom: 12,
+    },
+    postImages: {
+        marginBottom: 12,
+    },
+    postImage: {
+        width: 200,
+        height: 150,
+        borderRadius: 8,
+        marginRight: 8,
+    },
+    postFooter: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingTop: 12,
+        borderTopWidth: 1,
+        borderTopColor: '#f3f4f6',
+    },
+    postStats: {
+        flexDirection: 'row',
+        gap: 16,
+    },
+    postStat: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
+    postStatText: {
+        fontSize: 14,
+        color: '#6b7280',
+    },
+    postTime: {
+        fontSize: 12,
+        color: '#9ca3af',
+    },
 });

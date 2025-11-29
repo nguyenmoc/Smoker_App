@@ -15,7 +15,8 @@ export interface User {
   tiktok?: string;
   facebook?: string;
   instagram?: string;
-  entityAccountId?: string;
+  entityAccountId: string;
+    type: string;
 }
 
 export interface Like {
