@@ -7,3 +7,7 @@
     if (diffInHours < 24) return `${diffInHours} giờ trước`;
     return `${Math.floor(diffInHours / 24)} ngày trước`;
 };
+
+export const CountItem = (data: object) => {
+    return Object.keys(data).length;
+}

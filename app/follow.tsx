@@ -149,7 +149,7 @@ export default function FollowScreen() {
 
   const handleUserPress = useCallback((user: FollowUser) => {
     router.push({
-      pathname: '/user',
+      pathname: '/Pages/user',
       params: { id: user.userId }
     });
   }, [router]);

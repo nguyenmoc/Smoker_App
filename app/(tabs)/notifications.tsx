@@ -16,7 +16,7 @@ import {
     View,
 } from 'react-native';
 import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
-import {formatTime} from "@/utils/formatDate";
+import {formatTime} from "@/utils/extension";
 
 // Bọc FlatList với Animated.createAnimatedComponent
 const AnimatedFlatList = Animated.createAnimatedComponent(RNFlatList);

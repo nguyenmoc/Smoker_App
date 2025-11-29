@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-import {formatTime} from "@/utils/formatDate";
+import {formatTime} from "@/utils/extension";
 
 interface CommentsListProps {
   comments: CommentsMap; // <-- object {id: Comment}
