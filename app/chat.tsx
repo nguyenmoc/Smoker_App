@@ -3,10 +3,11 @@ import { useAuth } from '@/hooks/useAuth';
 import { MessageApiService } from '@/services/messageApi';
 import publicProfileApi from '@/services/publicProfileApi';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Animated, FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { PublicProfileData } from '@/types/profileType';
+import { useSocket } from '@/hooks/useSocket';
 
 interface Conversation {
   _id: string;
@@ -36,21 +37,14 @@ export default function ConversationsScreen() {
   const [profiles, setProfiles] = useState<Record<string, PublicProfileData>>({});
   const [loading, setLoading] = useState(true);
   const headerTranslateY = new Animated.Value(0);
+  const { socket } = useSocket();
 
-  useEffect(() => {
-    if (token) {
-      loadConversations();
-    } else {
-      setLoading(false);
-    }
-  }, [token]);
-
-  const loadConversations = async () => {
+  const loadConversations = useCallback(async () => {
     if (!messageApi) return;
 
     try {
       setLoading(true);
-      const data = await messageApi.getConversations(authState.EntityAccountId);
+      const data = await messageApi.getConversations(authState.EntityAccountId) as Conversation[];
     //   console.log('Loaded conversations:', data);
       setConversations(data || []);
 
@@ -70,7 +64,35 @@ export default function ConversationsScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [messageApi, authState.EntityAccountId]);
+
+  useEffect(() => {
+    if (token) {
+      loadConversations();
+    } else {
+      setLoading(false);
+    }
+  }, [token, loadConversations]);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleMessagesRead = () => {
+      loadConversations();
+    };
+
+    const handleNewMessage = () => {
+      loadConversations();
+    };
+
+    socket.on('messages_read', handleMessagesRead);
+    socket.on('new_message', handleNewMessage);
+
+    return () => {
+      socket.off('messages_read', handleMessagesRead);
+      socket.off('new_message', handleNewMessage);
+    };
+  }, [socket, loadConversations]);
 
   const handleConversationPress = (conversationId: string) => {
     router.push({
