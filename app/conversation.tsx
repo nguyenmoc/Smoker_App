@@ -130,9 +130,14 @@ export default function ConversationScreen() {
     const markRead = async () => {
       if (messages.length > 0 && !hasMarkedAsRead.current) {
         hasMarkedAsRead.current = true;
-        console.log('Marking messages as read for conversation:', conversationId);
+        //console.log('Marking messages as read for conversation:', conversationId);
         await markAsRead();
-        console.log('Marked as read successfully');
+        //console.log('Marked as read successfully');
+        // After marking as read, set lastReadMessageId to the last message if it's mine
+        if (messages[messages.length - 1].sender_id === currentUserId) {
+          setLastReadMessageId(messages[messages.length - 1]._id);
+          //console.log('Set lastReadMessageId to:', messages[messages.length - 1]._id);
+        }
         // Emit event to update unread count in other screens
         if (socket) {
           socket.emit('messages_read', { conversationId });
@@ -140,7 +145,7 @@ export default function ConversationScreen() {
       }
     };
     markRead();
-  }, [messages, socket, conversationId]);
+  }, [messages, socket, conversationId, markAsRead, currentUserId]);
 
   const handleNewMessage = useCallback((message: Message) => {
     // Add new message to the list
@@ -167,6 +172,7 @@ export default function ConversationScreen() {
       hasFetchedLastRead.current = true;
       messageApi.current.getMessages(conversationId).then(res => {
         if (res.success && res.data) {
+          //console.log('Fetched last_read_message_id:', res.data.last_read_message_id);
           setLastReadMessageId(res.data.last_read_message_id || null);
         }
       }).catch(err => console.warn('Error fetching last read message ID:', err));
@@ -184,7 +190,14 @@ export default function ConversationScreen() {
     const success = await sendMessageHook(content, messageType);
     if (success) {
       // Reload messages to show the new message
-      loadMessages();
+      await loadMessages();
+      // After loading, update lastReadMessageId if the last message is mine
+      const updatedMessages = messages; // Note: messages may not be updated yet, but since loadMessages sorts, assume it's updated
+      //console.log('After send, messages length:', updatedMessages.length, 'last message sender:', updatedMessages[updatedMessages.length - 1]?.sender_id);
+      if (updatedMessages.length > 0 && updatedMessages[updatedMessages.length - 1].sender_id === currentUserId) {
+        setLastReadMessageId(updatedMessages[updatedMessages.length - 1]._id);
+        //console.log('Updated lastReadMessageId to:', updatedMessages[updatedMessages.length - 1]._id);
+      }
       // Emit event to update conversations list
       if (socket) {
         socket.emit('new_message', { conversationId });
@@ -192,24 +205,15 @@ export default function ConversationScreen() {
     } else {
       Alert.alert('Lỗi', 'Không thể gửi tin nhắn');
     }
-  }, [conversationId, sendMessageHook, loadMessages, socket]);
+  }, [conversationId, sendMessageHook, loadMessages, socket, messages, currentUserId]);
 
   const renderMessageItem = ({ item, index }: { item: Message; index: number }) => {
     const isMyMessage = item.sender_id === currentUserId;
     const isLastMessage = index === messages.length - 1;
 
-    // Find if this is the last message sent by current user
-    let isLastUserMessage = false;
-    if (isMyMessage) {
-      for (let i = messages.length - 1; i >= 0; i--) {
-        if (messages[i].sender_id === currentUserId) {
-          isLastUserMessage = messages[i]._id === item._id;
-          break;
-        }
-      }
-    }
+    const showReadStatus = isLastMessage && lastReadMessageId === item._id;
 
-    const showReadStatus = isMyMessage && isLastUserMessage && lastReadMessageId === item._id;
+    //console.log('Message:', item._id, 'isLast:', isLastMessage, 'lastReadId:', lastReadMessageId, 'showRead:', showReadStatus, 'isMy:', isMyMessage);
 
     return (
       <View style={[
@@ -243,7 +247,10 @@ export default function ConversationScreen() {
               })}
             </Text>
             {showReadStatus && (
-              <Text style={styles.readStatus}>Đã xem</Text>
+              <Text style={[
+                styles.readStatus,
+                isMyMessage ? styles.myReadStatus : styles.otherReadStatus
+              ]}>Đã xem</Text>
             )}
           </View>
         </View>
@@ -378,8 +385,13 @@ const styles = StyleSheet.create({
   },
   readStatus: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.7)',
     fontStyle: 'italic',
+  },
+  myReadStatus: {
+    color: 'rgba(255,255,255,0.7)',
+  },
+  otherReadStatus: {
+    color: '#6b7280',
   },
   loadingContainer: {
     flex: 1,
