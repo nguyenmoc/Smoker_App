@@ -27,7 +27,7 @@ export const CommentsList: React.FC<CommentsListProps> = ({
 
   const CommentItem = ({ comment }: { comment: CommentData }) => (
     <View style={styles.commentItem}>
-      <TouchableOpacity onPress={() => onUserPress(comment.accountId)}>
+      <TouchableOpacity onPress={() => onUserPress(comment.entityAccountId)}>
         <Image source={{ uri: comment.authorAvatar }} style={styles.commentAvatar} />
       </TouchableOpacity>
 
