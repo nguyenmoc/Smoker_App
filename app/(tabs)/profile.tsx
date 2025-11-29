@@ -27,7 +27,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import {formatTime} from "@/utils/formatDate";
+import {formatTime} from "@/utils/extension";
 
 const { width: screenWidth } = Dimensions.get('window');
 const PHOTO_SIZE = (screenWidth - 4) / 3;

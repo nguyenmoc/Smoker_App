@@ -263,7 +263,7 @@ export default function HomeScreen() {
 
   const handleUserPress = useCallback((userId: string) => {
     router.push({
-      pathname: '/user',
+      pathname: '/Pages/user',
       params: { id: userId }
     });
   }, [router]);
