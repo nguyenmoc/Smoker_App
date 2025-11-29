@@ -85,10 +85,14 @@ export default function ConversationScreen() {
     addMessage
   } = useMessages(messageApi.current, conversationId || '', currentUserId);
 
+  const hasLoadedConversation = useRef(false);
+
   const loadConversation = useCallback(async () => {
-    if (!messageApi.current) {
+    if (!messageApi.current || hasLoadedConversation.current) {
       return;
     }
+
+    hasLoadedConversation.current = true;
 
     try {
       // For now, we'll get conversation details from conversations list
@@ -109,10 +113,14 @@ export default function ConversationScreen() {
   }, [conversationId, authState.EntityAccountId]);
 
   useEffect(() => {
-    // Scroll to bottom when messages change (new message received)
+    loadConversation();
+  }, [loadConversation]);
+
+  useEffect(() => {
+    // Scroll to bottom when messages change
     if (messages.length > 0 && flatListRef.current) {
       setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: true });
+        flatListRef.current?.scrollToEnd({ animated: false });
       }, 100);
     }
   }, [messages]);
@@ -152,16 +160,18 @@ export default function ConversationScreen() {
       };
     }
   }, [socket, conversationId, handleNewMessage]);
+  const hasFetchedLastRead = useRef(false);
+
   useEffect(() => {
-    if (conversationId && messageApi.current && messages.length > 0) {
-      // Update last read message ID when messages change
+    if (conversationId && messageApi.current && !hasFetchedLastRead.current) {
+      hasFetchedLastRead.current = true;
       messageApi.current.getMessages(conversationId).then(res => {
         if (res.success && res.data) {
           setLastReadMessageId(res.data.last_read_message_id || null);
         }
-      }).catch(err => console.warn('Error updating last read message ID:', err));
+      }).catch(err => console.warn('Error fetching last read message ID:', err));
     }
-  }, [messages, conversationId]);
+  }, [conversationId]);
 
   const handleLoadMore = useCallback(() => {
     if (hasMore && !loading && messages.length > 0) {
@@ -175,10 +185,14 @@ export default function ConversationScreen() {
     if (success) {
       // Reload messages to show the new message
       loadMessages();
+      // Emit event to update conversations list
+      if (socket) {
+        socket.emit('new_message', { conversationId });
+      }
     } else {
       Alert.alert('Lỗi', 'Không thể gửi tin nhắn');
     }
-  }, [conversationId, sendMessageHook, loadMessages]);
+  }, [conversationId, sendMessageHook, loadMessages, socket]);
 
   const renderMessageItem = ({ item, index }: { item: Message; index: number }) => {
     const isMyMessage = item.sender_id === currentUserId;
@@ -271,8 +285,14 @@ export default function ConversationScreen() {
             keyExtractor={(item, index) => `${item._id}_${index}`}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingTop: 60, paddingBottom: 20 }}
-            onEndReached={handleLoadMore}
-            onEndReachedThreshold={0.1}
+            onScroll={(e) => {
+              const offsetY = e.nativeEvent.contentOffset.y;
+              if (offsetY <= 0 && hasMore && !loading && messages.length > 0) {
+                handleLoadMore();  // fetch page tiếp theo
+              }
+            }}
+            scrollEventThrottle={16}
+            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
           />
         )}
 
