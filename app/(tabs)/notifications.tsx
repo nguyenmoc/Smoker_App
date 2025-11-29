@@ -62,9 +62,10 @@ export default function NotificationScreen() {
 
     // Handle notification press
     const handleNotificationPress = useCallback((notification: Notification) => {
-        if (!(notification.status == "Read")) {
-            markAsRead(notification.id);
-        }
+        //if (!(notification.status == "Read")) {
+        console.log(notification)
+            markAsRead(notification._id);
+        //}
 
         const [, type, id] = notification.link.split("/");
         let path = "";
@@ -153,7 +154,7 @@ export default function NotificationScreen() {
             <AnimatedFlatList
                 data={notifications}
                 renderItem={renderNotification as any}
-                keyExtractor={(item) => item.id}
+                keyExtractor={(item) => item._id}
                 style={styles.list}
                 showsVerticalScrollIndicator={false}
                 ItemSeparatorComponent={() => <View style={styles.separator}/>}

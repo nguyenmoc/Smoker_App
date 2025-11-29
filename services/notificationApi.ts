@@ -53,7 +53,7 @@ class NotificationApiService {
 
     // Tạo notification mới
     async createNotification(
-        notification: Omit<Notification, 'id'>
+        notification: Omit<Notification, '_id'>
     ): Promise<ApiResponse<Notification>> {
         return this.makeRequest<Notification>('/notifications', {
             method: 'POST',
@@ -62,18 +62,17 @@ class NotificationApiService {
     }
 
     // Đánh dấu một notification đã đọc
-    async markAsRead(id: string, accountId: string): Promise<ApiResponse<null>> {
+    async markAsRead(id: string, accountId: string, token: string): Promise<ApiResponse<null>> {
         return this.makeRequest<null>(`/notifications/${id}/read?entityAccountId=${accountId}`, {
-            method: 'PATCH',
-            body: JSON.stringify({isRead: true}),
-        });
+            method: 'PUT'
+        }, token);
     }
 
     // Đánh dấu tất cả notifications đã đọc
-    async markAllAsRead(): Promise<ApiResponse<null>> {
-        return this.makeRequest<null>('/notifications/read-all', {
-            method: 'PATCH',
-        });
+    async markAllAsRead(accountId: string, token: string): Promise<ApiResponse<null>> {
+        return this.makeRequest<null>(`/notifications/read-all?entityAccountId=${accountId}`, {
+            method: 'PUT',
+        }, token);
     }
 
     // Xóa tất cả notifications

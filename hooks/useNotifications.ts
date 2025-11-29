@@ -10,13 +10,14 @@ export const useNotifications = () => {
   const [error, setError] = useState<string | null>(null);
     const { authState } = useAuth();
     const accountId = authState.EntityAccountId ?? "A13BDE7D-00F7-43D3-BDBF-D59A3B63C203";
+    const token = authState.token ?? "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IkU3NEJFRkU1LTRGRDEtNDhGMy1BRDQxLTgzQzY4RjJDNkE2OSIsImVtYWlsIjoiU21va2VyQGdtYWlsLmNvbSIsInJvbGUiOiJjdXN0b21lciIsImlhdCI6MTc2NDMxNjk0NywiZXhwIjoxNzY0OTIxNzQ3fQ.4e8Sz-AhfS_eaVmiJJxOvgtHstr2EI-ad1JYrCk54FI";
 
   // Lấy notifications từ API
   const fetchNotifications = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await notificationApi.getNotifications(accountId, authState.token ?? "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IkU3NEJFRkU1LTRGRDEtNDhGMy1BRDQxLTgzQzY4RjJDNkE2OSIsImVtYWlsIjoiU21va2VyQGdtYWlsLmNvbSIsInJvbGUiOiJjdXN0b21lciIsImlhdCI6MTc2NDMxNjk0NywiZXhwIjoxNzY0OTIxNzQ3fQ.4e8Sz-AhfS_eaVmiJJxOvgtHstr2EI-ad1JYrCk54FI");
+      const response = await notificationApi.getNotifications(accountId, token);
       if (response.success && response.data) {
         setNotifications(response.data);
         setUnreadCount(response.data.filter((n) => !(n.status == "Read")).length);
@@ -33,7 +34,7 @@ export const useNotifications = () => {
 
   // Thêm notification mới
   const addNotification = useCallback(
-    async (notification: Omit<Notification, 'id' | 'time' | 'isRead'>) => {
+    async (notification: Omit<Notification, '_id' | 'time' | 'isRead'>) => {
       try {
         const response = await notificationApi.createNotification({
           ...notification,
@@ -57,7 +58,7 @@ export const useNotifications = () => {
   const markAsRead = useCallback(
     async (id: string) => {
       try {
-        const response = await notificationApi.markAsRead(id, accountId);
+        const response = await notificationApi.markAsRead(id, accountId, token);
         if (response.success) {
           await fetchNotifications(); // Làm mới danh sách sau khi cập nhật
         } else {
@@ -74,7 +75,7 @@ export const useNotifications = () => {
   // Đánh dấu tất cả notifications đã đọc
   const markAllAsRead = useCallback(async () => {
     try {
-      const response = await notificationApi.markAllAsRead();
+      const response = await notificationApi.markAllAsRead(accountId,token);
       if (response.success) {
         await fetchNotifications(); // Làm mới danh sách sau khi cập nhật
       } else {

@@ -1,5 +1,5 @@
 export interface Notification {
-    id: string;
+    _id: string;
     type: 'like' | 'comment' | 'follow' | 'post' | 'mention';
     sender: {
         name: string;
