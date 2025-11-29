@@ -72,6 +72,7 @@ export default function ConversationScreen() {
   const headerTranslateY = new Animated.Value(0);
   const flatListRef = useRef<FlatList>(null);
   const hasMarkedAsRead = useRef(false);
+  const [lastReadMessageId, setLastReadMessageId] = useState<string | null>(null);
 
   const {
     messages,
@@ -84,10 +85,14 @@ export default function ConversationScreen() {
     addMessage
   } = useMessages(messageApi.current, conversationId || '', currentUserId);
 
+  const hasLoadedConversation = useRef(false);
+
   const loadConversation = useCallback(async () => {
-    if (!messageApi.current) {
+    if (!messageApi.current || hasLoadedConversation.current) {
       return;
     }
+
+    hasLoadedConversation.current = true;
 
     try {
       // For now, we'll get conversation details from conversations list
@@ -108,10 +113,14 @@ export default function ConversationScreen() {
   }, [conversationId, authState.EntityAccountId]);
 
   useEffect(() => {
-    // Scroll to bottom when messages change (new message received)
+    loadConversation();
+  }, [loadConversation]);
+
+  useEffect(() => {
+    // Scroll to bottom when messages change
     if (messages.length > 0 && flatListRef.current) {
       setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: true });
+        flatListRef.current?.scrollToEnd({ animated: false });
       }, 100);
     }
   }, [messages]);
@@ -121,9 +130,14 @@ export default function ConversationScreen() {
     const markRead = async () => {
       if (messages.length > 0 && !hasMarkedAsRead.current) {
         hasMarkedAsRead.current = true;
-        console.log('Marking messages as read for conversation:', conversationId);
+        //console.log('Marking messages as read for conversation:', conversationId);
         await markAsRead();
-        console.log('Marked as read successfully');
+        //console.log('Marked as read successfully');
+        // After marking as read, set lastReadMessageId to the last message if it's mine
+        if (messages[messages.length - 1].sender_id === currentUserId) {
+          setLastReadMessageId(messages[messages.length - 1]._id);
+          //console.log('Set lastReadMessageId to:', messages[messages.length - 1]._id);
+        }
         // Emit event to update unread count in other screens
         if (socket) {
           socket.emit('messages_read', { conversationId });
@@ -131,7 +145,7 @@ export default function ConversationScreen() {
       }
     };
     markRead();
-  }, [messages, socket, conversationId]);
+  }, [messages, socket, conversationId, markAsRead, currentUserId]);
 
   const handleNewMessage = useCallback((message: Message) => {
     // Add new message to the list
@@ -151,11 +165,19 @@ export default function ConversationScreen() {
       };
     }
   }, [socket, conversationId, handleNewMessage]);
+  const hasFetchedLastRead = useRef(false);
+
   useEffect(() => {
-    if (conversationId && authState.EntityAccountId) {
-      loadConversation();
+    if (conversationId && messageApi.current && !hasFetchedLastRead.current) {
+      hasFetchedLastRead.current = true;
+      messageApi.current.getMessages(conversationId).then(res => {
+        if (res.success && res.data) {
+          //console.log('Fetched last_read_message_id:', res.data.last_read_message_id);
+          setLastReadMessageId(res.data.last_read_message_id || null);
+        }
+      }).catch(err => console.warn('Error fetching last read message ID:', err));
     }
-  }, [conversationId, authState.EntityAccountId, loadConversation]);
+  }, [conversationId]);
 
   const handleLoadMore = useCallback(() => {
     if (hasMore && !loading && messages.length > 0) {
@@ -168,15 +190,30 @@ export default function ConversationScreen() {
     const success = await sendMessageHook(content, messageType);
     if (success) {
       // Reload messages to show the new message
-      loadMessages();
+      await loadMessages();
+      // After loading, update lastReadMessageId if the last message is mine
+      const updatedMessages = messages; // Note: messages may not be updated yet, but since loadMessages sorts, assume it's updated
+      //console.log('After send, messages length:', updatedMessages.length, 'last message sender:', updatedMessages[updatedMessages.length - 1]?.sender_id);
+      if (updatedMessages.length > 0 && updatedMessages[updatedMessages.length - 1].sender_id === currentUserId) {
+        setLastReadMessageId(updatedMessages[updatedMessages.length - 1]._id);
+        //console.log('Updated lastReadMessageId to:', updatedMessages[updatedMessages.length - 1]._id);
+      }
+      // Emit event to update conversations list
+      if (socket) {
+        socket.emit('new_message', { conversationId });
+      }
     } else {
       Alert.alert('Lỗi', 'Không thể gửi tin nhắn');
     }
-  }, [conversationId, sendMessageHook, loadMessages]);
+  }, [conversationId, sendMessageHook, loadMessages, socket, messages, currentUserId]);
 
   const renderMessageItem = ({ item, index }: { item: Message; index: number }) => {
     const isMyMessage = item.sender_id === currentUserId;
     const isLastMessage = index === messages.length - 1;
+
+    const showReadStatus = isLastMessage && lastReadMessageId === item._id;
+
+    //console.log('Message:', item._id, 'isLast:', isLastMessage, 'lastReadId:', lastReadMessageId, 'showRead:', showReadStatus, 'isMy:', isMyMessage);
 
     return (
       <View style={[
@@ -209,8 +246,11 @@ export default function ConversationScreen() {
                 minute: '2-digit'
               })}
             </Text>
-            {isMyMessage && isLastMessage && hasMarkedAsRead.current && (
-              <Text style={styles.readStatus}>Đã xem</Text>
+            {showReadStatus && (
+              <Text style={[
+                styles.readStatus,
+                isMyMessage ? styles.myReadStatus : styles.otherReadStatus
+              ]}>Đã xem</Text>
             )}
           </View>
         </View>
@@ -252,8 +292,14 @@ export default function ConversationScreen() {
             keyExtractor={(item, index) => `${item._id}_${index}`}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingTop: 60, paddingBottom: 20 }}
-            onEndReached={handleLoadMore}
-            onEndReachedThreshold={0.1}
+            onScroll={(e) => {
+              const offsetY = e.nativeEvent.contentOffset.y;
+              if (offsetY <= 0 && hasMore && !loading && messages.length > 0) {
+                handleLoadMore();  // fetch page tiếp theo
+              }
+            }}
+            scrollEventThrottle={16}
+            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
           />
         )}
 
@@ -339,8 +385,13 @@ const styles = StyleSheet.create({
   },
   readStatus: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.7)',
     fontStyle: 'italic',
+  },
+  myReadStatus: {
+    color: 'rgba(255,255,255,0.7)',
+  },
+  otherReadStatus: {
+    color: '#6b7280',
   },
   loadingContainer: {
     flex: 1,
