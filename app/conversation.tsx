@@ -72,6 +72,7 @@ export default function ConversationScreen() {
   const headerTranslateY = new Animated.Value(0);
   const flatListRef = useRef<FlatList>(null);
   const hasMarkedAsRead = useRef(false);
+  const [lastReadMessageId, setLastReadMessageId] = useState<string | null>(null);
 
   const {
     messages,
@@ -152,10 +153,15 @@ export default function ConversationScreen() {
     }
   }, [socket, conversationId, handleNewMessage]);
   useEffect(() => {
-    if (conversationId && authState.EntityAccountId) {
-      loadConversation();
+    if (conversationId && messageApi.current && messages.length > 0) {
+      // Update last read message ID when messages change
+      messageApi.current.getMessages(conversationId).then(res => {
+        if (res.success && res.data) {
+          setLastReadMessageId(res.data.last_read_message_id || null);
+        }
+      }).catch(err => console.warn('Error updating last read message ID:', err));
     }
-  }, [conversationId, authState.EntityAccountId, loadConversation]);
+  }, [messages, conversationId]);
 
   const handleLoadMore = useCallback(() => {
     if (hasMore && !loading && messages.length > 0) {
@@ -177,6 +183,19 @@ export default function ConversationScreen() {
   const renderMessageItem = ({ item, index }: { item: Message; index: number }) => {
     const isMyMessage = item.sender_id === currentUserId;
     const isLastMessage = index === messages.length - 1;
+
+    // Find if this is the last message sent by current user
+    let isLastUserMessage = false;
+    if (isMyMessage) {
+      for (let i = messages.length - 1; i >= 0; i--) {
+        if (messages[i].sender_id === currentUserId) {
+          isLastUserMessage = messages[i]._id === item._id;
+          break;
+        }
+      }
+    }
+
+    const showReadStatus = isMyMessage && isLastUserMessage && lastReadMessageId === item._id;
 
     return (
       <View style={[
@@ -209,7 +228,7 @@ export default function ConversationScreen() {
                 minute: '2-digit'
               })}
             </Text>
-            {isMyMessage && isLastMessage && hasMarkedAsRead.current && (
+            {showReadStatus && (
               <Text style={styles.readStatus}>Đã xem</Text>
             )}
           </View>
