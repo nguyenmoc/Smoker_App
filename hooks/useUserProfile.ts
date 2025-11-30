@@ -1,8 +1,8 @@
 // hooks/useUserProfile.ts
-import {Post, User} from '@/constants/feedData';
-import {feedApi} from '@/services/feedApi';
-import {useCallback, useEffect, useState} from 'react';
-import {useAuth} from "@/hooks/useAuth";
+import { Post, User } from '@/constants/feedData';
+import { useAuth } from "@/hooks/useAuth";
+import { feedApi } from '@/services/feedApi';
+import { useCallback, useEffect, useState } from 'react';
 
 export const useUserProfile = (userId: string) => {
     const [user, setUser] = useState<User | null>(null);
@@ -22,7 +22,7 @@ export const useUserProfile = (userId: string) => {
             const [userResponse, postsResponse] = await Promise.all([
                 feedApi.getViewInformation(userId),
                 feedApi.getUserPosts(userId)
-            ]);
+            ]);            
 
             if (userResponse.success && userResponse.data) {
                 const response = await feedApi.checkFollow(accountId, userResponse.data.entityAccountId, token);

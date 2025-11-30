@@ -1,6 +1,5 @@
-import {Notification} from '@/constants/notiData';
-
-const API_BASE_URL = 'https://smoker-be-api.onrender.com/api';
+import { Notification } from '@/constants/notiData';
+import { API_CONFIG } from './apiConfig';
 
 interface ApiResponse<T> {
     success: boolean;
@@ -20,7 +19,7 @@ export class NotificationApiService {
         options: RequestInit = {}
     ): Promise<ApiResponse<T>> {
         try {
-            const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+            const response = await fetch(`${API_CONFIG.BASE_URL}${endpoint}`, {
                 headers: {
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${this.token}`,

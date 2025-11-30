@@ -43,8 +43,6 @@ export const usePostDetails = (postId: string) => {
 
 const addComment = async (content: string) => {
   if (!post || !authState.currentId) return false;
-  console.log('post.entityId>>>', post.entityId);
-  console.log('post.post.entityType>>>', post.entityType);
 
   const commentData: CreateCommentData = {
     content,

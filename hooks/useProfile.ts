@@ -14,7 +14,7 @@ export const useProfile = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const { authState } = useAuth();
+  const { authState, updateAuthState } = useAuth();
   const token = authState.token;
   const profileApi = new ProfileApiService(token!!);
 
@@ -96,6 +96,11 @@ export const useProfile = () => {
 
       if (response.data) {
         setProfile(response.data);
+        if (type === 'avatar') {
+          updateAuthState({
+            avatar: response.data.avatar,
+          });
+        }
         return true;
       } else {
         Alert.alert('Cảnh báo', 'Cập nhật ảnh offline. Ảnh sẽ được tải lên khi có kết nối.');
@@ -114,7 +119,7 @@ export const useProfile = () => {
 
   const setFullProfile = (newProfile: UserProfileData) => {
     setLoading(false)
-    
+
     setProfile(prev => ({
       ...prev,
       ...newProfile,
