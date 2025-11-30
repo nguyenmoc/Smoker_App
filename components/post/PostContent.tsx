@@ -3,13 +3,14 @@ import { useAuth } from '@/hooks/useAuth';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import {
-  Dimensions,
-  Image,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    Dimensions, FlatList,
+    Image,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
+import {formatTime} from "@/utils/extension";
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -31,21 +32,12 @@ export const PostContent: React.FC<PostContentProps> = ({
   const currentUserId = authState.currentId;
   const likeCount = Object.keys(post.likes || {}).length;
   const commentCount = Object.keys(post.comments || {}).length;
+    const images = post.mediaIds.map(x => x.url);
 
   // Kiểm tra user hiện tại đã like chưa
   const isLiked = currentUserId
     ? Object.values(post.likes || {}).some(like => like.accountId === currentUserId)
     : false;
-
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
-
-    if (diffInHours < 1) return 'Vừa xong';
-    if (diffInHours < 24) return `${diffInHours} giờ trước`;
-    return `${Math.floor(diffInHours / 24)} ngày trước`;
-  };
 
   const handleImageScroll = (event: any) => {
     const contentOffsetX = event.nativeEvent.contentOffset.x;
@@ -72,14 +64,14 @@ export const PostContent: React.FC<PostContentProps> = ({
 
       <Text style={styles.postContent}>{post.content}</Text>
 
-      {/* {post.images.length > 0 && (
+       {images.length > 0 && (
         <View style={styles.imageGalleryContainer}>
           <FlatList
-            data={post.images}
+            data={images}
             horizontal
             pagingEnabled
             showsHorizontalScrollIndicator={false}
-            keyExtractor={(image, index) => `${post.id}-image-${index}`}
+            keyExtractor={(image, index) => `${post._id}-image-${index}`}
             renderItem={({ item: image }) => (
               <View style={styles.imageContainer}>
                 <Image
@@ -94,23 +86,13 @@ export const PostContent: React.FC<PostContentProps> = ({
             onScroll={handleImageScroll}
             scrollEventThrottle={16}
           />
-          {post.images.length > 1 && (
+          {images.length > 1 && (
             <View style={styles.imageCounter}>
               <Text style={styles.imageCounterText}>
-                {currentImageIndex + 1}/{post.images.length}
+                {currentImageIndex + 1}/{images.length}
               </Text>
             </View>
           )}
-        </View>
-      )} */}
-
-      {post.images && (
-        <View style={styles.imageContainer}>
-          <Image
-            source={{ uri: post.images || "https://picsum.photos/400/300?random=10" }}
-            style={styles.postImage}
-            resizeMode="cover"
-          />
         </View>
       )}
 

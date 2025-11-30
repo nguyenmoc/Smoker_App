@@ -1,7 +1,7 @@
 import { CommentData } from "@/types/commentType";
 
 export interface User {
-  id: string;
+  _id: string;
   name: string;
   username: string;
   avatar: string;
@@ -15,7 +15,8 @@ export interface User {
   tiktok?: string;
   facebook?: string;
   instagram?: string;
-  entityAccountId?: string;
+  entityAccountId: string;
+    type: string;
 }
 
 export interface Like {
@@ -49,7 +50,8 @@ export interface Post {
   // location?: string;
   authorAvatar: string;
   accountId: string;
-  authorName: string
+  authorName: string;
+    mediaIds: any[]
 }
 
 export interface CreatePostData {
