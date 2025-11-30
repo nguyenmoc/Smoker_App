@@ -1,7 +1,7 @@
-import {CreateCommentData, CreatePostData, Post, User} from "@/constants/feedData";
-import {CommentData} from "@/types/commentType";
-import {PostData} from "@/types/postType";
-import {API_CONFIG} from "./apiConfig";
+import { CreateCommentData, CreatePostData, Post, User } from "@/constants/feedData";
+import { CommentData } from "@/types/commentType";
+import { PostData } from "@/types/postType";
+import { API_CONFIG } from "./apiConfig";
 
 interface ApiResponse<T> {
     success: boolean;
@@ -23,11 +23,12 @@ export class FeedApiService {
         token?: string
     ): Promise<ApiResponse<T>> {
         try {
+            const finalToken = token ?? this.token;
 
             const response = await fetch(`${API_CONFIG.BASE_URL}${endpoint}`, {
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
+                    'Authorization': `Bearer ${finalToken}`,
                     ...options.headers,
                 },
                 ...options,
