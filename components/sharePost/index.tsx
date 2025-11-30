@@ -1,4 +1,4 @@
-﻿import React, {useCallback, useState} from 'react';
+﻿import React from 'react';
 import {
     Modal,
     View,
@@ -17,21 +17,9 @@ interface ShareModalModalProps {
 }
 
 const ShareModal: React.FC<ShareModalModalProps> = ({visible, onClose, value}) => {
-    const [loading, setLoading] = useState(false);
+    const handleRepost = async () => {
 
-    const handleReport = async () => {
-        setLoading(true);
-        try {
-            await new Promise((resolve) => setTimeout(resolve, 1000));
-            Alert.alert("Thông báo", "Báo cáo thành công!");
-            onClose();
-        } catch (err) {
-            Alert.alert("Lỗi", "Không thể report");
-        } finally {
-            setLoading(false);
-        }
     };
-
 
     const handleShare = async (post: PostData) => {
         if (!post) return;
@@ -64,7 +52,7 @@ const ShareModal: React.FC<ShareModalModalProps> = ({visible, onClose, value}) =
             />
 
             <View style={styles.modalContent}>
-                <TouchableOpacity style={styles.modalItem} onPress={handleReport}>
+                <TouchableOpacity style={styles.modalItem} onPress={handleRepost}>
                     <Ionicons name="repeat-outline" size={20} color="#ef4444"/>
                     <Text style={styles.modalText}>Đăng lại</Text>
                 </TouchableOpacity>
