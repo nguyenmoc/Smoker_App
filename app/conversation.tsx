@@ -73,6 +73,8 @@ export default function ConversationScreen() {
   const flatListRef = useRef<FlatList>(null);
   const hasMarkedAsRead = useRef(false);
   const [lastReadMessageId, setLastReadMessageId] = useState<string | null>(null);
+  const [otherParticipantLastReadMessageId, setOtherParticipantLastReadMessageId] = useState<string | null>(null);
+  const hasFetchedLastRead = useRef(false);
 
   const {
     messages,
@@ -86,6 +88,22 @@ export default function ConversationScreen() {
   } = useMessages(messageApi.current, conversationId || '', currentUserId);
 
   const hasLoadedConversation = useRef(false);
+
+  const fetchReadStatuses = useCallback(async () => {
+    if (!messageApi.current || !conversationId) return;
+    try {
+      const res = await messageApi.current.getMessages(conversationId);
+      console.log('LOG: fetchReadStatuses res:', res);
+      if (res.success && res.data) {
+        console.log('LOG: res.data:', res.data);
+        setLastReadMessageId(res.last_read_message_id || null);
+        setOtherParticipantLastReadMessageId(res.other_participant_last_read_message_id || null);
+        console.log('LOG: Fetched read statuses - lastReadMessageId:', res.last_read_message_id, 'otherParticipantLastReadMessageId:', res.other_participant_last_read_message_id);
+      }
+    } catch (err) {
+      console.warn('Error fetching read statuses:', err);
+    }
+  }, [conversationId]);
 
   const loadConversation = useCallback(async () => {
     if (!messageApi.current || hasLoadedConversation.current) {
@@ -132,12 +150,8 @@ export default function ConversationScreen() {
         hasMarkedAsRead.current = true;
         //console.log('Marking messages as read for conversation:', conversationId);
         await markAsRead();
-        //console.log('Marked as read successfully');
-        // After marking as read, set lastReadMessageId to the last message if it's mine
-        if (messages[messages.length - 1].sender_id === currentUserId) {
-          setLastReadMessageId(messages[messages.length - 1]._id);
-          //console.log('Set lastReadMessageId to:', messages[messages.length - 1]._id);
-        }
+        // Fetch updated read statuses after marking as read
+        await fetchReadStatuses();
         // Emit event to update unread count in other screens
         if (socket) {
           socket.emit('messages_read', { conversationId });
@@ -145,7 +159,7 @@ export default function ConversationScreen() {
       }
     };
     markRead();
-  }, [messages, socket, conversationId, markAsRead, currentUserId]);
+  }, [messages, socket, conversationId, markAsRead, fetchReadStatuses]);
 
   const handleNewMessage = useCallback((message: Message) => {
     // Add new message to the list
@@ -159,25 +173,31 @@ export default function ConversationScreen() {
       // Listen for new messages
       socket.on('new_message', handleNewMessage);
 
+      // Listen for messages_read to update read status
+      socket.on('messages_read', (data) => {
+        if (data.conversationId === conversationId) {
+          // If the reader is not the current user, update otherParticipantLastReadMessageId
+          if (data.readerEntityAccountId !== currentUserId) {
+            setOtherParticipantLastReadMessageId(data.last_read_message_id);
+            console.log('LOG: Updated otherParticipantLastReadMessageId from socket:', data.last_read_message_id, 'data:', data);
+          }
+        }
+      });
+
       return () => {
         socket.off('new_message', handleNewMessage);
+        socket.off('messages_read');
         socket.emit('leave_conversation', conversationId);
       };
     }
-  }, [socket, conversationId, handleNewMessage]);
-  const hasFetchedLastRead = useRef(false);
+  }, [socket, conversationId, handleNewMessage, currentUserId]);
 
   useEffect(() => {
     if (conversationId && messageApi.current && !hasFetchedLastRead.current) {
       hasFetchedLastRead.current = true;
-      messageApi.current.getMessages(conversationId).then(res => {
-        if (res.success && res.data) {
-          //console.log('Fetched last_read_message_id:', res.data.last_read_message_id);
-          setLastReadMessageId(res.data.last_read_message_id || null);
-        }
-      }).catch(err => console.warn('Error fetching last read message ID:', err));
+      fetchReadStatuses();
     }
-  }, [conversationId]);
+  }, [conversationId, fetchReadStatuses]);
 
   const handleLoadMore = useCallback(() => {
     if (hasMore && !loading && messages.length > 0) {
@@ -191,13 +211,8 @@ export default function ConversationScreen() {
     if (success) {
       // Reload messages to show the new message
       await loadMessages();
-      // After loading, update lastReadMessageId if the last message is mine
-      const updatedMessages = messages; // Note: messages may not be updated yet, but since loadMessages sorts, assume it's updated
-      //console.log('After send, messages length:', updatedMessages.length, 'last message sender:', updatedMessages[updatedMessages.length - 1]?.sender_id);
-      if (updatedMessages.length > 0 && updatedMessages[updatedMessages.length - 1].sender_id === currentUserId) {
-        setLastReadMessageId(updatedMessages[updatedMessages.length - 1]._id);
-        //console.log('Updated lastReadMessageId to:', updatedMessages[updatedMessages.length - 1]._id);
-      }
+      // Fetch updated read statuses
+      await fetchReadStatuses();
       // Emit event to update conversations list
       if (socket) {
         socket.emit('new_message', { conversationId });
@@ -205,13 +220,11 @@ export default function ConversationScreen() {
     } else {
       Alert.alert('Lỗi', 'Không thể gửi tin nhắn');
     }
-  }, [conversationId, sendMessageHook, loadMessages, socket, messages, currentUserId]);
+  }, [conversationId, sendMessageHook, loadMessages, fetchReadStatuses, socket]);
 
   const renderMessageItem = ({ item, index }: { item: Message; index: number }) => {
     const isMyMessage = item.sender_id === currentUserId;
     const isLastMessage = index === messages.length - 1;
-
-    const showReadStatus = isLastMessage && lastReadMessageId === item._id;
 
     //console.log('Message:', item._id, 'isLast:', isLastMessage, 'lastReadId:', lastReadMessageId, 'showRead:', showReadStatus, 'isMy:', isMyMessage);
 
@@ -246,12 +259,6 @@ export default function ConversationScreen() {
                 minute: '2-digit'
               })}
             </Text>
-            {showReadStatus && (
-              <Text style={[
-                styles.readStatus,
-                isMyMessage ? styles.myReadStatus : styles.otherReadStatus
-              ]}>Đã xem</Text>
-            )}
           </View>
         </View>
       </View>
@@ -285,22 +292,63 @@ export default function ConversationScreen() {
             <Text style={styles.emptyText}>Chưa có tin nhắn nào.{'\n'}Hãy bắt đầu cuộc trò chuyện!</Text>
           </View>
         ) : (
-          <FlatList
-            ref={flatListRef}
-            data={messages}
-            renderItem={renderMessageItem}
-            keyExtractor={(item, index) => `${item._id}_${index}`}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingTop: 60, paddingBottom: 20 }}
-            onScroll={(e) => {
-              const offsetY = e.nativeEvent.contentOffset.y;
-              if (offsetY <= 0 && hasMore && !loading && messages.length > 0) {
-                handleLoadMore();  // fetch page tiếp theo
+          <>
+            <FlatList
+              ref={flatListRef}
+              data={messages}
+              renderItem={renderMessageItem}
+              keyExtractor={(item, index) => `${item._id}_${index}`}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingTop: 60, paddingBottom: 20 }}
+              onScroll={(e) => {
+                const offsetY = e.nativeEvent.contentOffset.y;
+                if (offsetY <= 0 && hasMore && !loading && messages.length > 0) {
+                  handleLoadMore();  // fetch page tiếp theo
+                }
+              }}
+              scrollEventThrottle={16}
+              onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
+            />
+            
+            {/* Hiển thị "Đã xem" dưới cùng của cuộc trò chuyện */}
+            {(() => {
+              // Kiểm tra message cuối cùng có phải của mình không
+              const lastMessage = messages.length > 0 ? messages[messages.length - 1] : null;
+              console.log('LOG: lastMessage:', lastMessage);
+              if (!lastMessage) {
+                console.log('LOG: No lastMessage, returning null');
+                return null;
               }
-            }}
-            scrollEventThrottle={16}
-            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
-          />
+              
+              const isLastMessageFromMe = String(lastMessage.sender_id).toLowerCase().trim() === String(currentUserId).toLowerCase().trim();
+              console.log('LOG: isLastMessageFromMe:', isLastMessageFromMe, 'sender_id:', lastMessage.sender_id, 'currentUserId:', currentUserId);
+              
+              const lastMessageId = String(lastMessage._id || lastMessage._id || lastMessage.messageId).trim();
+              const otherReadId = otherParticipantLastReadMessageId ? String(otherParticipantLastReadMessageId).trim() : null;
+              console.log('LOG: lastMessageId:', lastMessageId, 'otherReadId:', otherReadId);
+              
+              // Chỉ hiển thị khi: message cuối cùng là của mình + đối phương đã đọc (otherReadId >= lastMessageId)
+              const showReadStatus = isLastMessageFromMe && 
+                otherReadId && 
+                lastMessageId && 
+                otherReadId >= lastMessageId;
+              console.log('LOG: showReadStatus:', showReadStatus, 'conditions:', { isLastMessageFromMe, otherReadId, lastMessageId, comparison: otherReadId && lastMessageId ? `${otherReadId} >= ${lastMessageId} = ${otherReadId >= lastMessageId}` : 'N/A' });
+              
+              if (!showReadStatus) {
+                console.log('LOG: NOT SHOWING "Đã xem"');
+                return null;
+              }
+              
+              console.log('LOG: SHOWING "Đã xem"');
+              return (
+                <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 8, marginBottom: 8, paddingHorizontal: 16 }}>
+                  <Text style={{ fontSize: 11, color: '#6b7280' }}>
+                    Đã xem
+                  </Text>
+                </View>
+              );
+            })()}
+          </>
         )}
 
         <MessageInput
@@ -382,16 +430,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: 4,
-  },
-  readStatus: {
-    fontSize: 12,
-    fontStyle: 'italic',
-  },
-  myReadStatus: {
-    color: 'rgba(255,255,255,0.7)',
-  },
-  otherReadStatus: {
-    color: '#6b7280',
   },
   loadingContainer: {
     flex: 1,
