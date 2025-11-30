@@ -127,6 +127,12 @@ export class FeedApiService {
             body: JSON.stringify(postData),
         });
     }
+    async rePost(repost: any, token: string): Promise<ApiResponse<any>> {
+        return this.makeRequest<any>('/posts', {
+            method: 'POST',
+            body: JSON.stringify(repost),
+        }, token);
+    }
 
     async likePost(postId: string): Promise<ApiResponse<{ liked: boolean; }>> {
         return this.makeRequest<{ liked: boolean; }>(`/posts/${postId}/like`, {
@@ -135,7 +141,7 @@ export class FeedApiService {
     }
 
     async getPostDetails(postId: string): Promise<ApiResponse<PostData>> {
-        return this.makeRequest<PostData>(`/posts/${postId}`);
+        return this.makeRequest<PostData>(`/posts/${postId}?includeMedias=true`);
     }
 
     async updatePost(postId: string, postData: { content: string }): Promise<ApiResponse<Post>> {

@@ -17,7 +17,7 @@ import {
     View,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
-import RenderPost from "@/components/RenderPost";
+import RenderPost from "@/components/renderPost";
 import {styles} from "@/app/Pages/user/style";
 
 export default function Index() {
