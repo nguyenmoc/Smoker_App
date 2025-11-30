@@ -17,8 +17,10 @@ export const usePostDetails = (postId: string) => {
 
   const feedApi = new FeedApiService(token!!);
 
-  const fetchPostDetails = useCallback(async () => {
-    setLoading(true);
+  const fetchPostDetails = useCallback(async (silent: boolean = false) => {
+    if (!silent) {
+      setLoading(true);
+    }
     setError(null);
 
     try {
@@ -26,142 +28,105 @@ export const usePostDetails = (postId: string) => {
 
       if (postResponse.success && postResponse.data) {
         setPost(postResponse.data);
+        
+        // Cập nhật comments ngay sau khi có data
+        if (postResponse.data.comments) {
+          const commentList = Object.values(postResponse.data.comments);
+          setComments(commentList);
+        }
       } else {
         setError('Không tìm thấy bài viết');
       }
-
-      if (postResponse.success && postResponse.data?.comments) {
-        const commentList = Object.values(postResponse.data.comments);
-        setComments(commentList);
-      }
     } catch (err) {
       console.error('Error fetching post details:', err);
+      setError('Đã xảy ra lỗi khi tải bài viết');
     } finally {
-      setLoading(false);
-    }
-  }, [postId]);
-
-const addComment = async (content: string) => {
-  if (!post || !authState.currentId) return false;
-
-  const commentData: CreateCommentData = {
-    content,
-    accountId: authState.currentId!!,
-    entityAccountId: authState.EntityAccountId!!,
-    entityId: post.entityId,
-    entityType: post.entityType,
-  };
-
-  try {
-    const response = await feedApi.createComment(commentData, post._id);
-
-    if (response.success && response.data) {
-      // Lấy comment mới nhất từ post.comments
-      const commentsMap = response.data.comments;
-      const newCommentId = Object.keys(commentsMap).pop(); // lấy comment cuối cùng
-      const newComment = commentsMap![newCommentId!];
-
-      // Cập nhật post.comments
-      setPost(prevPost => prevPost ? {
-        ...prevPost,
-        comments: {
-          ...prevPost.comments,
-          [newComment._id]: newComment
-        }
-      } : null);
-
-      return true;
-    }
-    return false;
-  } catch (err) {
-    console.error('Error adding comment:', err);
-    return false;
-  }
-};
-
-
-  const likeComment = async (commentId: string)=> {
-    // setComments(prevComments =>
-    //   prevComments.map(comment =>
-    //     comment.id === commentId
-    //       ? {
-    //         ...comment,
-    //         isLiked: !comment.isLiked,
-    //         likes: comment.isLiked ? comment.likes - 1 : comment.likes + 1,
-    //       }
-    //       : comment
-    //   )
-    // );
-
-    // try {
-    //   const response = await feedApi.likeComment(commentId);
-
-    //   if (!response.success) {
-    //     // Revert optimistic update
-    //     setComments(prevComments =>
-    //       prevComments.map(comment =>
-    //         comment.id === commentId
-    //           ? {
-    //             ...comment,
-    //             isLiked: !comment.isLiked,
-    //             likes: comment.isLiked ? comment.likes - 1 : comment.likes + 1,
-    //           }
-    //           : comment
-    //       )
-    //     );
-    //   }
-    // } catch (err) {
-    //   console.error('Error liking comment:', err);
-    // }
-  };
-
-const likePost = useCallback(async () => {
-  if (!post) return;
-
-  const currentUserId = authState.currentId;
-  if (!currentUserId) return;
-
-  // Tính trạng thái đã like hay chưa
-  const isLiked = !!Object.values(post.likes || {}).find(
-    like => like.accountId === currentUserId
-  );
-
-  // Optimistic update: cập nhật UI ngay
-  setPost(prevPost => {
-    if (!prevPost) return prevPost;
-
-    const updatedLikes = { ...prevPost.likes };
-    if (isLiked) {
-      // unlike
-      for (const key in updatedLikes) {
-        if (updatedLikes[key].accountId === currentUserId) {
-          delete updatedLikes[key];
-        }
+      if (!silent) {
+        setLoading(false);
       }
-    } else {
-      // like
-      const newKey = Math.random().toString(36).substring(2, 15); // key tạm thời
-      updatedLikes[newKey] = {
-        accountId: currentUserId,
-        TypeRole: 'Account',
-      };
     }
+  }, [postId, token]);
 
-    return { ...prevPost, likes: updatedLikes };
-  });
+  const addComment = async (content: string) => {
+    if (!post || !authState.currentId) return false;
 
-  // Gọi API
-  try {
-    const response = await feedApi.likePost(postId);
-    if (!response.success) {
-      // revert nếu API fail
-      fetchPostDetails();
+    const commentData: CreateCommentData = {
+      content,
+      accountId: authState.currentId!!,
+      entityAccountId: authState.EntityAccountId!!,
+      entityId: post.entityId,
+      entityType: post.entityType,
+    };
+
+    try {
+      const response = await feedApi.createComment(commentData, post._id);
+
+      if (response.success && response.data) {
+        setTimeout(() => {
+          fetchPostDetails(true); // silent = true
+        }, 100);
+
+        return true;
+      } else {
+        return false;
+      }
+    } catch (err) {
+      console.error('Error adding comment:', err);
+      return false;
     }
-  } catch (err) {
-    console.error('Error liking post:', err);
-    fetchPostDetails(); // revert
-  }
-}, [post, authState.currentId, feedApi, fetchPostDetails, postId]);
+  };
+
+  const likeComment = async (commentId: string) => {
+    // Implementation here
+  };
+
+  const likePost = useCallback(async () => {
+    if (!post) return;
+
+    const currentUserId = authState.currentId;
+    if (!currentUserId) return;
+
+    // Tính trạng thái đã like hay chưa
+    const isLiked = !!Object.values(post.likes || {}).find(
+      like => like.accountId === currentUserId
+    );
+
+    // Optimistic update: cập nhật UI ngay
+    setPost(prevPost => {
+      if (!prevPost) return prevPost;
+
+      const updatedLikes = { ...prevPost.likes };
+      if (isLiked) {
+        // unlike
+        for (const key in updatedLikes) {
+          if (updatedLikes[key].accountId === currentUserId) {
+            delete updatedLikes[key];
+          }
+        }
+      } else {
+        // like
+        const newKey = Math.random().toString(36).substring(2, 15);
+        updatedLikes[newKey] = {
+          accountId: currentUserId,
+          TypeRole: 'Account',
+        };
+      }
+
+      return { ...prevPost, likes: updatedLikes };
+    });
+
+    // Gọi API
+    try {
+      const response = await feedApi.likePost(postId);
+      if (!response.success) {
+        // revert nếu API fail
+        fetchPostDetails(true); // silent fetch
+      }
+    } catch (err) {
+      console.error('Error liking post:', err);
+      fetchPostDetails(true); // silent fetch
+    }
+  }, [post, authState.currentId, feedApi, fetchPostDetails, postId]);
 
   const updatePost = async (postId: string, data: { content: string }): Promise<boolean> => {
     try {
