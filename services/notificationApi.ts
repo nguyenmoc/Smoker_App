@@ -9,17 +9,21 @@ interface ApiResponse<T> {
     error?: string;
 }
 
-class NotificationApiService {
+export class NotificationApiService {
+    private token: string;
+
+    constructor(token: string) {
+        this.token = token;
+    }
     private async makeRequest<T>(
         endpoint: string,
-        options: RequestInit = {},
-        token?: string,
+        options: RequestInit = {}
     ): Promise<ApiResponse<T>> {
         try {
             const response = await fetch(`${API_BASE_URL}${endpoint}`, {
                 headers: {
                     'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token ?? ""}`,
+                    Authorization: `Bearer ${this.token}`,
                     ...options.headers,
                 },
                 ...options,
@@ -41,14 +45,9 @@ class NotificationApiService {
         }
     }
 
-    private async getAuthToken(): Promise<string> {
-        // TODO: Get token from secure storage or auth context
-        return 'your-auth-token-here';
-    }
-
     // Lấy danh sách notifications
-    async getNotifications(accountId: string, token: string, page: number = 1, limit: number = 10): Promise<ApiResponse<Notification[]>> {
-        return this.makeRequest<Notification[]>(`/notifications?entityAccountId=${accountId}&page=${page}&limit=${limit}`, {}, token);
+    async getNotifications(accountId: string, page: number = 1, limit: number = 10): Promise<ApiResponse<Notification[]>> {
+        return this.makeRequest<Notification[]>(`/notifications?entityAccountId=${accountId}&page=${page}&limit=${limit}`, {});
     }
 
     // Tạo notification mới
@@ -62,17 +61,17 @@ class NotificationApiService {
     }
 
     // Đánh dấu một notification đã đọc
-    async markAsRead(id: string, accountId: string, token: string): Promise<ApiResponse<null>> {
+    async markAsRead(id: string, accountId: string): Promise<ApiResponse<null>> {
         return this.makeRequest<null>(`/notifications/${id}/read?entityAccountId=${accountId}`, {
             method: 'PUT'
-        }, token);
+        });
     }
 
     // Đánh dấu tất cả notifications đã đọc
-    async markAllAsRead(accountId: string, token: string): Promise<ApiResponse<null>> {
+    async markAllAsRead(accountId: string): Promise<ApiResponse<null>> {
         return this.makeRequest<null>(`/notifications/read-all?entityAccountId=${accountId}`, {
             method: 'PUT',
-        }, token);
+        });
     }
 
     // Xóa tất cả notifications
@@ -82,5 +81,3 @@ class NotificationApiService {
         });
     }
 }
-
-export const notificationApi = new NotificationApiService();

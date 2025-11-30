@@ -19,15 +19,14 @@ export class FeedApiService {
 
     private async makeRequest<T>(
         endpoint: string,
-        options: RequestInit = {},
-        token?: string
+        options: RequestInit = {}
     ): Promise<ApiResponse<T>> {
         try {
 
             const response = await fetch(`${API_CONFIG.BASE_URL}${endpoint}`, {
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
+                    'Authorization': `Bearer ${this.token}`,
                     ...options.headers,
                 },
                 ...options,
@@ -127,11 +126,11 @@ export class FeedApiService {
             body: JSON.stringify(postData),
         });
     }
-    async rePost(repost: any, token: string): Promise<ApiResponse<any>> {
+    async rePost(repost: any): Promise<ApiResponse<any>> {
         return this.makeRequest<any>('/posts', {
             method: 'POST',
             body: JSON.stringify(repost),
-        }, token);
+        });
     }
 
     async likePost(postId: string): Promise<ApiResponse<{ liked: boolean; }>> {
@@ -186,7 +185,7 @@ export class FeedApiService {
         return this.makeRequest<Post[]>(`/posts/author/${accountId}`,{method: 'GET'});
     }
 
-    async followUser(followerId: string, followingId: string, followingType: string, token: string): Promise<ApiResponse<{
+    async followUser(followerId: string, followingId: string, followingType: string): Promise<ApiResponse<{
         isFollowing: boolean
     }>> {
         return this.makeRequest<{ isFollowing: boolean }>(`/follow/follow`, {
@@ -196,9 +195,9 @@ export class FeedApiService {
                 followingId,
                 followingType,
             })
-        }, token);
+        });
     }
-    async unFollowUser(followerId: string, followingId: string, token: string): Promise<ApiResponse<{
+    async unFollowUser(followerId: string, followingId: string): Promise<ApiResponse<{
         isFollowing: boolean
     }>> {
         return this.makeRequest<{ isFollowing: boolean }>(`/follow/unfollow`, {
@@ -207,15 +206,15 @@ export class FeedApiService {
                 followerId,
                 followingId
             })
-        }, token);
+        });
     }
 
-    async checkFollow(followerId: string, followingId: string, token: string): Promise<ApiResponse<{
+    async checkFollow(followerId: string, followingId: string): Promise<ApiResponse<{
         isFollowing: boolean
     }>> {
         return this.makeRequest<{ isFollowing: boolean }>(`/follow/check?followerId=${followerId}&followingId=${followingId}`, {
             method: 'GET'
-        }, token);
+        });
     }
 
     async uploadImage(imageUri: string): Promise<ApiResponse<{ imageUrl: string }>> {
