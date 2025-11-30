@@ -27,7 +27,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import {formatTime} from "@/utils/extension";
+import RenderPost from "@/components/renderPost";
 
 const { width: screenWidth } = Dimensions.get('window');
 const PHOTO_SIZE = (screenWidth - 4) / 3;
@@ -91,6 +91,7 @@ export default function ProfileScreen() {
   const { authState, logout, updateAuthState } = useAuth();
   const {
     profile,
+      posts,
     loading,
     error,
     fetchProfile,
@@ -244,43 +245,6 @@ export default function ProfileScreen() {
     </TouchableOpacity>
   );
 
-  const renderPostItem = ({ item }: { item: any }) => (
-    <View style={styles.postCard}>
-      <TouchableOpacity onPress={() => handlePostPress(item.id)}>
-        <Text style={styles.postContent}>{item.content}</Text>
-      </TouchableOpacity>
-
-      {item.images.length > 0 && (
-        <FlatList
-          data={item.images}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          keyExtractor={(image, index) => `${item.id}-img-${index}`}
-          renderItem={({ item: image }) => (
-            <Image source={{ uri: image }} style={styles.postImage} />
-          )}
-          style={styles.postImages}
-        />
-      )}
-
-      <TouchableOpacity onPress={() => handlePostPress(item.id)}>
-        <View style={styles.postFooter}>
-          <View style={styles.postStats}>
-            <View style={styles.postStat}>
-              <Ionicons name="heart" size={16} color="#ef4444" />
-              <Text style={styles.postStatText}>{item.likes}</Text>
-            </View>
-            <View style={styles.postStat}>
-              <Ionicons name="chatbubble" size={16} color="#6b7280" />
-              <Text style={styles.postStatText}>{item.comments}</Text>
-            </View>
-          </View>
-          <Text style={styles.postTime}>{formatTime(item.createdAt)}</Text>
-        </View>
-      </TouchableOpacity>
-    </View>
-  );
-
   const renderPhotoItem = ({ item }: { item: any }) => (
     <TouchableOpacity style={styles.photoItem} onPress={() => handlePostPress(item.postId)}>
       <Image source={{ uri: item.uri }} style={styles.photoImage} />
@@ -415,9 +379,9 @@ export default function ProfileScreen() {
       ) : activeTab === 'posts' ? (
         <Animated.FlatList
           key="posts-list"
-          data={mockPosts}
-          renderItem={renderPostItem}
-          keyExtractor={(item) => item.id}
+          data={posts}
+          renderItem={({ item }) => <RenderPost item={item} />}
+          keyExtractor={(item) => item._id}
           ListHeaderComponent={
             <ProfileHeader
               profile={profile}
@@ -444,6 +408,12 @@ export default function ProfileScreen() {
             useNativeDriver: true,
           })}
           scrollEventThrottle={16}
+          ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                  <Ionicons name="images-outline" size={48} color="#d1d5db"/>
+                  <Text style={styles.emptyText}>Chưa có bài viết nào</Text>
+              </View>
+          }
         />
       ) : (
         <Animated.FlatList
@@ -732,4 +702,22 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
     paddingTop: 12,
   },
+    emptyContainer: {
+        alignItems: 'center',
+        paddingVertical: 48,
+        paddingHorizontal: 32,
+    },
+    emptyText: {
+        fontSize: 18,
+        color: '#6b7280',
+        marginTop: 16,
+        fontWeight: '500',
+    },
+    emptySubtext: {
+        fontSize: 14,
+        color: '#9ca3af',
+        marginTop: 8,
+        textAlign: 'center',
+        lineHeight: 20,
+    },
 });
