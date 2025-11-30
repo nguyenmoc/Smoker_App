@@ -1,10 +1,10 @@
+import { Post } from "@/constants/feedData";
+import { FeedApiService } from "@/services/feedApi";
 import { ProfileApiService } from '@/services/profileApi';
 import { UploadFile, UserProfileData } from '@/types/profileType';
 import { useCallback, useEffect, useState } from 'react';
 import { Alert } from 'react-native';
 import { useAuth } from './useAuth';
-import {Post} from "@/constants/feedData";
-import {feedApi} from "@/services/feedApi";
 
 type FieldValue = string | UploadFile;
 
@@ -17,31 +17,32 @@ export const useProfile = () => {
   const { authState, updateAuthState } = useAuth();
   const token = authState.token;
   const profileApi = new ProfileApiService(token!!);
+  const feedApi = new FeedApiService(token!!);
 
-  const fetchProfile = useCallback(async () => {
+const fetchProfile = useCallback(async () => {
     if (!token) return;
 
 
-    setLoading(true);
-    setError(null);
+  setLoading(true);
+  setError(null);
 
-    try {
-      const response = await profileApi.getUserProfile();
+  try {
+    const response = await profileApi.getUserProfile();
       const postsResponse = await feedApi.getUserPosts(authState.EntityAccountId!)
-      if (response.data) {
-        setProfile(response.data);
-      } else {
-        setError(response.message);
-      }
-        if (postsResponse.success && postsResponse.data) {
-            setPosts(postsResponse.data);
+    if (response.data) {
+      setProfile(response.data);
+    } else {
+      setError(response.message);
+    }
+    if ( postsResponse.data) {
+      setPosts(postsResponse.data);
         }
     } catch (err) {
       setError('Không thể tải thông tin hồ sơ');
-    } finally {
-      setLoading(false);
-    }
-  }, [token]);
+  } finally {
+    setLoading(false);
+  }
+}, [token]);
 
   // Cập nhật các trường text
   const updateProfileField = async (field: string, value: string): Promise<boolean> => {

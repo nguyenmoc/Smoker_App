@@ -1,24 +1,24 @@
 import { Notification } from '@/constants/notiData';
+import { useAuth } from "@/hooks/useAuth";
+import { NotificationApiService } from "@/services/notificationApi";
 import { useCallback, useEffect, useState } from 'react';
-import {useAuth} from "@/hooks/useAuth";
-import {NotificationApiService} from "@/services/notificationApi";
 
 export const useNotifications = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-    const { authState } = useAuth();
-    const accountId = authState.EntityAccountId ?? "A13BDE7D-00F7-43D3-BDBF-D59A3B63C203";
-    const token = authState.token ?? "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IkU3NEJFRkU1LTRGRDEtNDhGMy1BRDQxLTgzQzY4RjJDNkE2OSIsImVtYWlsIjoiU21va2VyQGdtYWlsLmNvbSIsInJvbGUiOiJjdXN0b21lciIsImlhdCI6MTc2NDMxNjk0NywiZXhwIjoxNzY0OTIxNzQ3fQ.4e8Sz-AhfS_eaVmiJJxOvgtHstr2EI-ad1JYrCk54FI";
+  const { authState } = useAuth();
+  const accountId = authState.EntityAccountId;
+  const token = authState.token;
 
-    const notificationApi = new NotificationApiService(token);
+  const notificationApi = new NotificationApiService(token!!);
   // Lấy notifications từ API
   const fetchNotifications = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await notificationApi.getNotifications(accountId);
+      const response = await notificationApi.getNotifications(accountId!!);
       if (response.success && response.data) {
         setNotifications(response.data);
         setUnreadCount(response.data.filter((n) => !(n.status === "Read")).length);
@@ -31,7 +31,7 @@ export const useNotifications = () => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [accountId]);
 
   // Thêm notification mới
   const addNotification = useCallback(
@@ -59,7 +59,7 @@ export const useNotifications = () => {
   const markAsRead = useCallback(
     async (id: string) => {
       try {
-        const response = await notificationApi.markAsRead(id, accountId);
+        const response = await notificationApi.markAsRead(id, accountId!!);
         if (response.success) {
           await fetchNotifications(); // Làm mới danh sách sau khi cập nhật
         } else {
@@ -76,7 +76,7 @@ export const useNotifications = () => {
   // Đánh dấu tất cả notifications đã đọc
   const markAllAsRead = useCallback(async () => {
     try {
-      const response = await notificationApi.markAllAsRead(accountId);
+      const response = await notificationApi.markAllAsRead(accountId!!);
       if (response.success) {
         await fetchNotifications(); // Làm mới danh sách sau khi cập nhật
       } else {

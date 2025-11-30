@@ -1,4 +1,5 @@
 import { ProfileHeader } from '@/components/ProfileHeader';
+import RenderPost from "@/components/renderPost";
 import { SidebarMenu } from '@/components/SidebarMenu';
 import { fieldLabels, mockPosts } from '@/constants/profileData';
 import { useAuth } from '@/hooks/useAuth';
@@ -12,7 +13,6 @@ import {
   Alert,
   Animated,
   Dimensions,
-  FlatList,
   Image,
   KeyboardAvoidingView,
   Modal,
@@ -24,10 +24,9 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import RenderPost from "@/components/renderPost";
 
 const { width: screenWidth } = Dimensions.get('window');
 const PHOTO_SIZE = (screenWidth - 4) / 3;
