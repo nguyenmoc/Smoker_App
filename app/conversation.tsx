@@ -93,12 +93,9 @@ export default function ConversationScreen() {
     if (!messageApi.current || !conversationId) return;
     try {
       const res = await messageApi.current.getMessages(conversationId);
-      console.log('LOG: fetchReadStatuses res:', res);
       if (res.success && res.data) {
-        console.log('LOG: res.data:', res.data);
         setLastReadMessageId(res.last_read_message_id || null);
         setOtherParticipantLastReadMessageId(res.other_participant_last_read_message_id || null);
-        console.log('LOG: Fetched read statuses - lastReadMessageId:', res.last_read_message_id, 'otherParticipantLastReadMessageId:', res.other_participant_last_read_message_id);
       }
     } catch (err) {
       console.warn('Error fetching read statuses:', err);
@@ -179,7 +176,6 @@ export default function ConversationScreen() {
           // If the reader is not the current user, update otherParticipantLastReadMessageId
           if (data.readerEntityAccountId !== currentUserId) {
             setOtherParticipantLastReadMessageId(data.last_read_message_id);
-            console.log('LOG: Updated otherParticipantLastReadMessageId from socket:', data.last_read_message_id, 'data:', data);
           }
         }
       });
@@ -314,32 +310,20 @@ export default function ConversationScreen() {
             {(() => {
               // Kiểm tra message cuối cùng có phải của mình không
               const lastMessage = messages.length > 0 ? messages[messages.length - 1] : null;
-              console.log('LOG: lastMessage:', lastMessage);
-              if (!lastMessage) {
-                console.log('LOG: No lastMessage, returning null');
-                return null;
-              }
+              if (!lastMessage) return null;
               
               const isLastMessageFromMe = String(lastMessage.sender_id).toLowerCase().trim() === String(currentUserId).toLowerCase().trim();
-              console.log('LOG: isLastMessageFromMe:', isLastMessageFromMe, 'sender_id:', lastMessage.sender_id, 'currentUserId:', currentUserId);
-              
-              const lastMessageId = String(lastMessage._id || lastMessage._id || lastMessage.messageId).trim();
+              const lastMessageId = String(lastMessage._id).trim();
               const otherReadId = otherParticipantLastReadMessageId ? String(otherParticipantLastReadMessageId).trim() : null;
-              console.log('LOG: lastMessageId:', lastMessageId, 'otherReadId:', otherReadId);
               
               // Chỉ hiển thị khi: message cuối cùng là của mình + đối phương đã đọc (otherReadId >= lastMessageId)
               const showReadStatus = isLastMessageFromMe && 
                 otherReadId && 
                 lastMessageId && 
                 otherReadId >= lastMessageId;
-              console.log('LOG: showReadStatus:', showReadStatus, 'conditions:', { isLastMessageFromMe, otherReadId, lastMessageId, comparison: otherReadId && lastMessageId ? `${otherReadId} >= ${lastMessageId} = ${otherReadId >= lastMessageId}` : 'N/A' });
               
-              if (!showReadStatus) {
-                console.log('LOG: NOT SHOWING "Đã xem"');
-                return null;
-              }
+              if (!showReadStatus) return null;
               
-              console.log('LOG: SHOWING "Đã xem"');
               return (
                 <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 8, marginBottom: 8, paddingHorizontal: 16 }}>
                   <Text style={{ fontSize: 11, color: '#6b7280' }}>
