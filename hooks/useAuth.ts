@@ -1,4 +1,5 @@
 import { AuthState, Role } from '@/constants/authData';
+import { useAuthContext } from '@/contexts/AuthProvider';
 import { fetchUserEntities, loginApi, upgradeRoleApi } from '@/services/authApi';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
@@ -7,16 +8,8 @@ import { Alert } from 'react-native';
 
 export const useAuth = () => {
   const router = useRouter();
-  const [authState, setAuthState] = useState<AuthState>({
-    isAuthenticated: false,
-    userEmail: undefined,
-    role: undefined,
-    token: undefined,
-    currentId: undefined,
-    avatar: undefined,
-    type: undefined,
-    EntityAccountId: undefined,
-  });
+  const { authState, setAuthState } = useAuthContext();
+  const [isLoading, setIsLoading] = useState(false);
 
   // Load state login nếu user nhớ đăng nhập
   useEffect(() => {
@@ -47,11 +40,12 @@ export const useAuth = () => {
 
 
   const login = async (email: string, password: string, rememberMe: boolean) => {
+    setIsLoading(true);
     try {
       const res = await loginApi(email, password);
 
       if (!res.token) {
-        Alert.alert('Đăng nhập thất bại', res.message ?? 'Tên đăng nhập hoặc mật khẩu không đúng');
+        Alert.alert('Đăng nhập thất bại', res.message ?? 'Email hoặc mật khẩu không đúng');
         return;
       }
 
@@ -93,8 +87,9 @@ export const useAuth = () => {
 
     } catch (error) {
       console.log(error);
-
       Alert.alert('Lỗi', 'Không thể kết nối đến server');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -103,6 +98,7 @@ export const useAuth = () => {
       Alert.alert('Lỗi', 'Không tìm thấy thông tin người dùng');
       return;
     }
+    setIsLoading(true);
     try {
       const response = await upgradeRoleApi(authState.userEmail, newRole);
       if (response.success) {
@@ -118,6 +114,8 @@ export const useAuth = () => {
       }
     } catch (error) {
       Alert.alert('Lỗi', 'Không thể kết nối server');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -137,58 +135,56 @@ export const useAuth = () => {
     router.replace('/auth/login');
   };
 
-  // hooks/useAuth.ts
+  const updateAuthState = async (
+    updates: Partial<AuthState>,
+    options?: { persist?: boolean }
+  ) => {
+    const shouldPersist = options?.persist ?? true;
 
-const updateAuthState = async (
-  updates: Partial<AuthState>,
-  options?: { persist?: boolean }
-) => {
-  const shouldPersist = options?.persist ?? true;
+    setAuthState((prev) => {
+      const newState = { ...prev, ...updates };
 
-  setAuthState((prev) => {
-    const newState = { ...prev, ...updates };
+      // Tự động lưu vào AsyncStorage nếu cần
+      if (shouldPersist) {
+        const savePromises = [];
 
-    // Tự động lưu vào AsyncStorage nếu cần
-    if (shouldPersist) {
-      const savePromises = [];
-
-      if (updates.userEmail !== undefined)
-        savePromises.push(AsyncStorage.setItem('userEmail', updates.userEmail || ''));
-      if (updates.token !== undefined)
-        savePromises.push(AsyncStorage.setItem('token', updates.token || ''));
-      if (updates.role !== undefined)
-        savePromises.push(AsyncStorage.setItem('role', updates.role || Role.CUSTOMER));
-      if (updates.currentId !== undefined)
-        savePromises.push(AsyncStorage.setItem('currentId', updates.currentId || ''));
-      if (updates.avatar !== undefined) {
-        if (updates.avatar) {
-          savePromises.push(AsyncStorage.setItem('avatar', updates.avatar));
-        } else {
-          savePromises.push(AsyncStorage.removeItem('avatar'));
+        if (updates.userEmail !== undefined)
+          savePromises.push(AsyncStorage.setItem('userEmail', updates.userEmail || ''));
+        if (updates.token !== undefined)
+          savePromises.push(AsyncStorage.setItem('token', updates.token || ''));
+        if (updates.role !== undefined)
+          savePromises.push(AsyncStorage.setItem('role', updates.role || Role.CUSTOMER));
+        if (updates.currentId !== undefined)
+          savePromises.push(AsyncStorage.setItem('currentId', updates.currentId || ''));
+        if (updates.avatar !== undefined) {
+          if (updates.avatar) {
+            savePromises.push(AsyncStorage.setItem('avatar', updates.avatar));
+          } else {
+            savePromises.push(AsyncStorage.removeItem('avatar'));
+          }
         }
-      }
-      if (updates.type !== undefined) {
-        if (updates.type) {
-          savePromises.push(AsyncStorage.setItem('type', updates.type));
-        } else {
-          savePromises.push(AsyncStorage.removeItem('type'));
+        if (updates.type !== undefined) {
+          if (updates.type) {
+            savePromises.push(AsyncStorage.setItem('type', updates.type));
+          } else {
+            savePromises.push(AsyncStorage.removeItem('type'));
+          }
         }
-      }
-      if (updates.EntityAccountId !== undefined) {
-        if (updates.EntityAccountId) {
-          savePromises.push(AsyncStorage.setItem('EntityAccountId', updates.EntityAccountId));
-        } else {
-          savePromises.push(AsyncStorage.removeItem('EntityAccountId'));
+        if (updates.EntityAccountId !== undefined) {
+          if (updates.EntityAccountId) {
+            savePromises.push(AsyncStorage.setItem('EntityAccountId', updates.EntityAccountId));
+          } else {
+            savePromises.push(AsyncStorage.removeItem('EntityAccountId'));
+          }
         }
+
+        // Thực hiện lưu bất đồng bộ (không cần await ở đây vì không block UI)
+        Promise.all(savePromises).catch((err) => console.warn('Lưu AsyncStorage thất bại:', err));
       }
 
-      // Thực hiện lưu bất đồng bộ (không cần await ở đây vì không block UI)
-      Promise.all(savePromises).catch((err) => console.warn('Lưu AsyncStorage thất bại:', err));
-    }
+      return newState;
+    });
+  };
 
-    return newState;
-  });
-};
-
-  return { authState, login, logout, upgradeRole, updateAuthState };
+  return { authState, login, logout, upgradeRole, updateAuthState, isLoading };
 };

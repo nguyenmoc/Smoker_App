@@ -1,3 +1,4 @@
+import { AuthState } from '@/constants/authData';
 import { useAccounts } from '@/hooks/useAccount';
 import { Account } from '@/types/accountType';
 import { UserProfileData } from '@/types/profileType';
@@ -24,6 +25,10 @@ interface SidebarMenuProps {
   onClose: () => void;
   onLogout: () => void;
   onProfileRefresh: (profile: UserProfileData) => void;
+  updateAuth: (
+  updates: Partial<AuthState>,
+  options?: { persist?: boolean }
+) => void;
 }
 
 export const SidebarMenu: React.FC<SidebarMenuProps> = ({
@@ -33,6 +38,7 @@ export const SidebarMenu: React.FC<SidebarMenuProps> = ({
   onClose,
   onLogout,
   onProfileRefresh,
+  updateAuth
 }) => {
   const router = useRouter();
   const {
@@ -53,6 +59,8 @@ export const SidebarMenu: React.FC<SidebarMenuProps> = ({
   // Handle switch account
   const handleSwitchAccount = async (account: Account) => {
     onClose();
+    console.log(account);
+    
 
     const dataProfile: UserProfileData = {
       id: account.id!,
@@ -72,6 +80,13 @@ export const SidebarMenu: React.FC<SidebarMenuProps> = ({
     };
 
     onProfileRefresh(dataProfile);
+    updateAuth({
+      avatar: account.Avatar,
+      EntityAccountId: account.EntityAccountId,
+      type: account.type,
+      role: account.Role,
+      currentId: account.id
+    })
   };
 
   // SIMPLE VERSION: Just open modal, don't close sidebar

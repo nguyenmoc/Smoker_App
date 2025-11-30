@@ -152,54 +152,6 @@ export default function ProfileScreen() {
     }, 300);
   };
 
-  const handleUpgradeAccount = () => {
-    toggleMenu();
-    setTimeout(() => {
-      Alert.alert(
-        'Nâng cấp tài khoản',
-        'Nâng cấp lên tài khoản doanh nghiệp để trải nghiệm nhiều tính năng hơn!',
-        [
-          { text: 'Để sau', style: 'cancel' },
-          {
-            text: 'Nâng cấp ngay',
-            onPress: () => {
-              console.log('Navigate to upgrade');
-            },
-          },
-        ]
-      );
-    }, 300);
-  };
-
-  const handleSwitchAccount = (accountId: string) => {
-    setCurrentAccountId(accountId);
-    toggleMenu();
-    setTimeout(() => {
-      Alert.alert('Chuyển tài khoản', `Đã chuyển sang tài khoản ${mockAccounts.find(a => a.id === accountId)?.name}`);
-    }, 300);
-  };
-
-  const handleAddAccount = () => {
-    toggleMenu();
-    setTimeout(() => {
-      Alert.alert(
-        'Thêm tài khoản',
-        'Bạn muốn tạo loại tài khoản nào?',
-        [
-          { text: 'Hủy', style: 'cancel' },
-          {
-            text: 'Tài khoản DJ',
-            onPress: () => console.log('Create DJ account'),
-          },
-          {
-            text: 'Tài khoản Quán Bar',
-            onPress: () => console.log('Create Bar account'),
-          },
-        ]
-      );
-    }, 300);
-  };
-
   const handlePostPress = (postId: string) => {
     // router.push({ pathname: '/post', params: { id: postId } });
   };
@@ -421,6 +373,7 @@ export default function ProfileScreen() {
         onClose={toggleMenu}
         onLogout={handleLogout}
         onProfileRefresh={setFullProfile}
+        updateAuth={updateAuthState}
       />
 
       {activeTab === 'info' ? (

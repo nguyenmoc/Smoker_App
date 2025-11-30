@@ -5,6 +5,7 @@ import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
@@ -23,6 +24,9 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [agree, setAgree] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const onRegister = async () => {
     if (!agree) {
@@ -30,16 +34,23 @@ export default function RegisterScreen() {
       return;
     }
 
-    const res = await registerApi(email, password, confirm);
+    setIsLoading(true);
+    try {
+      const res = await registerApi(email, password, confirm);
 
-    if (res.success === false) {
-      Alert.alert("Lỗi", res.message ?? "Đăng ký thất bại");
-      return;
+      if (res.success === false) {
+        Alert.alert("Lỗi", res.message ?? "Đăng ký thất bại");
+        return;
+      }
+
+      Alert.alert("Thành công", "Đăng ký thành công!", [
+        { text: "OK", onPress: () => router.push("/auth/login") },
+      ]);
+    } catch (error) {
+      Alert.alert("Lỗi", "Không thể kết nối đến server");
+    } finally {
+      setIsLoading(false);
     }
-
-    Alert.alert("Thành công", "Đăng ký thành công!", [
-      { text: "OK", onPress: () => router.push("/auth/login") },
-    ]);
   };
 
   return (
@@ -55,6 +66,7 @@ export default function RegisterScreen() {
         style={styles.backButton}
         onPress={() => router.back()}
         activeOpacity={0.7}
+        disabled={isLoading}
       >
         <Ionicons name="arrow-back" size={24} color="#111827" />
       </TouchableOpacity>
@@ -78,37 +90,68 @@ export default function RegisterScreen() {
 
           <View>
             <TextInput
-              placeholder="Tên đăng nhập"
+              placeholder="Email"
               style={styles.input}
               placeholderTextColor="#9ca3af"
               autoCapitalize="none"
+              keyboardType="email-address"
               value={email}
               onChangeText={setEmail}
+              editable={!isLoading}
             />
 
-            <TextInput
-              placeholder="Mật khẩu"
-              style={styles.input}
-              placeholderTextColor="#9ca3af"
-              secureTextEntry
-              value={password}
-              onChangeText={setPassword}
-            />
+            <View style={styles.passwordContainer}>
+              <TextInput
+                placeholder="Mật khẩu"
+                style={styles.passwordInput}
+                placeholderTextColor="#9ca3af"
+                secureTextEntry={!showPassword}
+                value={password}
+                onChangeText={setPassword}
+                editable={!isLoading}
+              />
+              <TouchableOpacity 
+                style={styles.eyeIcon}
+                onPress={() => setShowPassword(!showPassword)}
+                disabled={isLoading}
+              >
+                <Ionicons 
+                  name={showPassword ? "eye-off-outline" : "eye-outline"} 
+                  size={22} 
+                  color="#6b7280" 
+                />
+              </TouchableOpacity>
+            </View>
 
-            <TextInput
-              placeholder="Xác nhận mật khẩu"
-              style={styles.input}
-              placeholderTextColor="#9ca3af"
-              secureTextEntry
-              value={confirm}
-              onChangeText={setConfirm}
-            />
+            <View style={styles.passwordContainer}>
+              <TextInput
+                placeholder="Xác nhận mật khẩu"
+                style={styles.passwordInput}
+                placeholderTextColor="#9ca3af"
+                secureTextEntry={!showConfirm}
+                value={confirm}
+                onChangeText={setConfirm}
+                editable={!isLoading}
+              />
+              <TouchableOpacity 
+                style={styles.eyeIcon}
+                onPress={() => setShowConfirm(!showConfirm)}
+                disabled={isLoading}
+              >
+                <Ionicons 
+                  name={showConfirm ? "eye-off-outline" : "eye-outline"} 
+                  size={22} 
+                  color="#6b7280" 
+                />
+              </TouchableOpacity>
+            </View>
 
             <View style={styles.checkboxContainer}>
               <Checkbox
                 value={agree}
                 onValueChange={setAgree}
                 color={agree ? '#2563eb' : undefined}
+                disabled={isLoading}
               />
               <Text style={styles.checkboxText}>
                 Tôi đã đọc và đồng ý với các điều khoản và điều kiện
@@ -116,14 +159,18 @@ export default function RegisterScreen() {
             </View>
 
             <TouchableOpacity
-              style={[styles.button, !agree && { backgroundColor: '#9ca3af' }]}
+              style={[styles.button, (!agree || isLoading) && styles.buttonDisabled]}
               onPress={onRegister}
-              disabled={!agree}
+              disabled={!agree || isLoading}
             >
-              <Text style={styles.buttonText}>Đăng ký</Text>
+              {isLoading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.buttonText}>Đăng ký</Text>
+              )}
             </TouchableOpacity>
 
-            <TouchableOpacity onPress={() => router.back()}>
+            <TouchableOpacity onPress={() => router.back()} disabled={isLoading}>
               <Text style={styles.loginText}>
                 Bạn đã có tài khoản? <Text style={styles.loginLink}>Đăng nhập</Text>
               </Text>
@@ -173,12 +220,35 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 8,
     backgroundColor: '#f9fafb',
+    fontSize: 15,
+  },
+  passwordContainer: {
+    position: 'relative',
+    marginBottom: 16,
+  },
+  passwordInput: {
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    padding: 12,
+    paddingRight: 45,
+    borderRadius: 8,
+    backgroundColor: '#f9fafb',
+    fontSize: 15,
+  },
+  eyeIcon: {
+    position: 'absolute',
+    right: 12,
+    top: 12,
+    padding: 4,
   },
   button: {
     backgroundColor: '#2563eb',
     paddingVertical: 14,
     borderRadius: 8,
     marginBottom: 16,
+  },
+  buttonDisabled: {
+    backgroundColor: '#93bbf5',
   },
   buttonText: {
     textAlign: 'center',

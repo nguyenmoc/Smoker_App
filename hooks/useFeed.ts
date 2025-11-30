@@ -59,14 +59,12 @@ export const useFeed = () => {
       let uploadedMediaUrls: string[] = [];
       
       if (postData.files && postData.files.length > 0) {
-        console.log('Uploading media files...');
         setUploadProgress(30);
         
         const uploadResponse = await feedApi.uploadPostMedia(postData.files);
         
         if (uploadResponse.success && uploadResponse.data) {
           uploadedMediaUrls = uploadResponse.data.map(item => item.secure_url || item.url);
-          console.log('Media uploaded successfully:', uploadedMediaUrls);
           setUploadProgress(60);
         } else {
           Alert.alert('Lỗi', 'Không thể tải lên media');
@@ -106,7 +104,6 @@ export const useFeed = () => {
       }
 
       // Bước 3: Tạo bài viết
-      console.log('Creating post with payload:', createPostPayload);
       setUploadProgress(80);
       
       const response = await feedApi.createPost(createPostPayload);
