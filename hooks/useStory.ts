@@ -65,7 +65,7 @@ export const useStory = () => {
     try {
       setUploading(true);
       setUploadProgress(30);
-
+      
       const response = await storyApi.createStory(storyData);
       
       if (response.success && response.data) {

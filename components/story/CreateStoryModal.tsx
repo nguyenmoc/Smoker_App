@@ -1,3 +1,4 @@
+import { useAuth } from '@/hooks/useAuth';
 import { CreateStoryData } from '@/types/storyType';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -42,6 +43,7 @@ export const CreateStoryModal: React.FC<CreateStoryModalProps> = ({
     name: string;
   } | null>(null);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const {authState} = useAuth();
 
   useEffect(() => {
     const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => {
@@ -92,8 +94,8 @@ export const CreateStoryModal: React.FC<CreateStoryModalProps> = ({
 
     const storyData: CreateStoryData = {
       content: content.trim(),
-      caption: content.trim(),
       image: selectedImage || undefined,
+      entityAccountId: authState.EntityAccountId!!
     };
 
     onSubmit(storyData);

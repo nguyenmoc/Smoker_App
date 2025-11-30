@@ -78,11 +78,10 @@ export const useFeed = () => {
 
       // Bước 2: Tạo object cho API theo đúng format
       const createPostPayload: any = {
-        title: postData.content.substring(0, 50) || "Bài viết mới",
         content: postData.content,
         type: "post" as const,
-        entityType: "Account" as const,
-        entityAccountId: authState.currentId,
+        status: 'public',
+        entityAccountId: authState.EntityAccountId,
       };
 
       // Thêm images nếu có ảnh

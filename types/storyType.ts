@@ -36,7 +36,6 @@ export interface StoryData {
 
 export interface CreateStoryData {
   content?: string;
-  caption?: string;
   songId?: string;
   expiredAt?: string;
   image?: {
@@ -44,6 +43,7 @@ export interface CreateStoryData {
     type: string;
     name: string;
   };
+  entityAccountId: string;
 }
 
 export interface StoryViewer {
