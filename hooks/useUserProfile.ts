@@ -1,8 +1,8 @@
 // hooks/useUserProfile.ts
 import { Post, User } from '@/constants/feedData';
 import { useAuth } from "@/hooks/useAuth";
-import { feedApi } from '@/services/feedApi';
 import { useCallback, useEffect, useState } from 'react';
+import {FeedApiService} from "@/services/feedApi";
 
 export const useUserProfile = (userId: string) => {
     const [user, setUser] = useState<User | null>(null);
@@ -13,7 +13,7 @@ export const useUserProfile = (userId: string) => {
     const {authState} = useAuth();
     const accountId = authState.EntityAccountId ?? "A13BDE7D-00F7-43D3-BDBF-D59A3B63C203";
     const token = authState.token ?? "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IkU3NEJFRkU1LTRGRDEtNDhGMy1BRDQxLTgzQzY4RjJDNkE2OSIsImVtYWlsIjoiU21va2VyQGdtYWlsLmNvbSIsInJvbGUiOiJjdXN0b21lciIsImlhdCI6MTc2NDMxNjk0NywiZXhwIjoxNzY0OTIxNzQ3fQ.4e8Sz-AhfS_eaVmiJJxOvgtHstr2EI-ad1JYrCk54FI";
-
+    const feedApi = new FeedApiService(token);
     const fetchUserProfile = useCallback(async () => {
         setLoading(true);
         setError(null);
@@ -25,7 +25,7 @@ export const useUserProfile = (userId: string) => {
             ]);            
 
             if (userResponse.success && userResponse.data) {
-                const response = await feedApi.checkFollow(accountId, userResponse.data.entityAccountId, token);
+                const response = await feedApi.checkFollow(accountId, userResponse.data.entityAccountId);
                 setUser({
                     ...userResponse.data,
                     isFollowing: response.data?.isFollowing ?? false
@@ -49,7 +49,7 @@ export const useUserProfile = (userId: string) => {
     const followUser = async (): Promise<void> => {
         if (!user) return;
         try {
-            const response = await feedApi.followUser(accountId, user.entityAccountId, user.type, token);
+            const response = await feedApi.followUser(accountId, user.entityAccountId, user.type);
             if (!response.success) {
                 setUser(prev => prev ? {
                     ...prev,
@@ -64,7 +64,7 @@ export const useUserProfile = (userId: string) => {
     const unFollowUser = async (): Promise<void> => {
         if (!user) return;
         try {
-            const response = await feedApi.unFollowUser(accountId, user.entityAccountId, token);
+            const response = await feedApi.unFollowUser(accountId, user.entityAccountId);
 
             if (!response.success) {
                 setUser(prev => prev ? {
