@@ -1,9 +1,11 @@
-import {useUserProfile} from '@/hooks/useUserProfile';
-import {useAuth} from '@/hooks/useAuth';
-import {MessageApiService} from '@/services/messageApi';
-import {Ionicons} from '@expo/vector-icons';
-import {useLocalSearchParams, useRouter} from 'expo-router';
-import React, {useEffect, useRef} from 'react';
+import { styles } from "@/app/Pages/user/style";
+import RenderPost from "@/components/renderPost";
+import { useAuth } from '@/hooks/useAuth';
+import { useUserProfile } from '@/hooks/useUserProfile';
+import { MessageApiService } from '@/services/messageApi';
+import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useRef } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -16,9 +18,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
-import RenderPost from "@/components/renderPost";
-import {styles} from "@/app/Pages/user/style";
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function Index() {
     const router = useRouter();
@@ -27,13 +27,6 @@ export default function Index() {
     const {user, posts, loading, followUser, unFollowUser} = useUserProfile(id!);
     const scrollY = useRef(new Animated.Value(0)).current;
     const AnimatedFlatList = Animated.createAnimatedComponent(FlatList);
-
-    useEffect(() => {
-        console.log('ID từ params:', id);
-        if (user) {
-            console.log('Thông tin hồ sơ:', user);
-        }
-    }, [user, id]);
 
     const formatNumber = (num: number) => {
         if (num >= 1000000) {

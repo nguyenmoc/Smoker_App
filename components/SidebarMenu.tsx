@@ -58,9 +58,7 @@ export const SidebarMenu: React.FC<SidebarMenuProps> = ({
 
   // Handle switch account
   const handleSwitchAccount = async (account: Account) => {
-    onClose();
-    console.log(account);
-    
+    onClose();    
 
     const dataProfile: UserProfileData = {
       id: account.id!,

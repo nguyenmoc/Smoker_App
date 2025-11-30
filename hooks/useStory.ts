@@ -56,7 +56,7 @@ export const useStory = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [entityAccountId]);
+  }, [authState.EntityAccountId]);
 
   /**
    * Tạo story mới
