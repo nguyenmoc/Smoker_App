@@ -3,11 +3,14 @@ import { UploadFile, UserProfileData } from '@/types/profileType';
 import { useCallback, useEffect, useState } from 'react';
 import { Alert } from 'react-native';
 import { useAuth } from './useAuth';
+import {Post} from "@/constants/feedData";
+import {feedApi} from "@/services/feedApi";
 
 type FieldValue = string | UploadFile;
 
 export const useProfile = () => {
   const [profile, setProfile] = useState<UserProfileData>();
+    const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -18,17 +21,21 @@ export const useProfile = () => {
   const fetchProfile = useCallback(async () => {
     if (!token) return;
 
+
     setLoading(true);
     setError(null);
 
     try {
       const response = await profileApi.getUserProfile();
-
+      const postsResponse = await feedApi.getUserPosts(authState.EntityAccountId!)
       if (response.data) {
         setProfile(response.data);
       } else {
         setError(response.message);
       }
+        if (postsResponse.success && postsResponse.data) {
+            setPosts(postsResponse.data);
+        }
     } catch (err) {
       setError('Không thể tải thông tin hồ sơ');
     } finally {
@@ -122,6 +129,7 @@ export const useProfile = () => {
 
   return {
     profile,
+      posts,
     loading,
     error,
     fetchProfile,
