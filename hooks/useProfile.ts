@@ -10,7 +10,7 @@ type FieldValue = string | UploadFile;
 
 export const useProfile = () => {
   const [profile, setProfile] = useState<UserProfileData>();
-    const [posts, setPosts] = useState<Post[]>([]);
+  const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -19,30 +19,49 @@ export const useProfile = () => {
   const profileApi = new ProfileApiService(token!!);
   const feedApi = new FeedApiService(token!!);
 
-const fetchProfile = useCallback(async () => {
+  const fetchProfile = useCallback(async () => {
     if (!token) return;
 
 
-  setLoading(true);
-  setError(null);
+    setLoading(true);
+    setError(null);
 
-  try {
-    const response = await profileApi.getUserProfile();
+    try {
+      const response = await profileApi.getUserProfile(authState.EntityAccountId!!);
       const postsResponse = await feedApi.getUserPosts(authState.EntityAccountId!)
-    if (response.data) {
-      setProfile(response.data);
-    } else {
-      setError(response.message);
-    }
-    if ( postsResponse.data) {
-      setPosts(postsResponse.data);
-        }
+      if (response.data) {
+        const data = response.data;
+
+        const mappedProfile: UserProfileData = {
+          id: data.entityAccountId || data.entityId,
+          email: data.contact?.email || '',
+          userName: data.name || '',
+          role: data.role as Role,
+          avatar: data.avatar || '',
+          background: data.background || '',
+          coverImage: '',
+          phone: data.contact?.phone || '',
+          address: data.contact?.address || '',
+          addressData: null,
+          bio: data.bio || '',
+          gender: null,
+          status: 'active',
+          createdAt: '',
+        };
+
+        setProfile(mappedProfile);
+      } else {
+        setError(response.message);
+      }
+      if (postsResponse.data) {
+        setPosts(postsResponse.data);
+      }
     } catch (err) {
       setError('Không thể tải thông tin hồ sơ');
-  } finally {
-    setLoading(false);
-  }
-}, [token]);
+    } finally {
+      setLoading(false);
+    }
+  }, [token, authState.EntityAccountId]);
 
   // Cập nhật các trường text
   const updateProfileField = async (field: string, value: string): Promise<boolean> => {
@@ -135,7 +154,7 @@ const fetchProfile = useCallback(async () => {
 
   return {
     profile,
-      posts,
+    posts,
     loading,
     error,
     fetchProfile,

@@ -103,10 +103,10 @@ export const useNotifications = () => {
     }
   }, [fetchNotifications]);
 
-  // Tải notifications khi hook được mount
   useEffect(() => {
+    if (!accountId || !token) return;
     fetchNotifications();
-  }, [fetchNotifications]);
+  }, [fetchNotifications, token, accountId]);
 
   return {
     notifications,
