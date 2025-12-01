@@ -45,8 +45,8 @@ export class ProfileApiService {
     }
   }
 
-  async getUserProfile(): Promise<ApiResponse<UserProfileData>> {
-    return this.makeRequest<UserProfileData>('/user/me');
+  async getUserProfile(entityAccountId: string): Promise<ApiResponse<UserProfileData>> {
+    return this.makeRequest<UserProfileData>(`/user/by-entity/${entityAccountId}`);
   }
 
   async updateProfile(updates: UpdateProfileRequestData): Promise<ApiResponse<UserProfileData>> {

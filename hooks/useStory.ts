@@ -56,7 +56,7 @@ export const useStory = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [entityAccountId]);
+  }, [authState.EntityAccountId]);
 
   /**
    * Tạo story mới
@@ -65,7 +65,7 @@ export const useStory = () => {
     try {
       setUploading(true);
       setUploadProgress(30);
-
+      
       const response = await storyApi.createStory(storyData);
       
       if (response.success && response.data) {

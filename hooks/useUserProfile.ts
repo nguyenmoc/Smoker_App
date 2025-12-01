@@ -17,7 +17,7 @@ export const useUserProfile = (userId: string) => {
     const fetchUserProfile = useCallback(async () => {
         setLoading(true);
         setError(null);
-
+        debugger
         try {
             const [userResponse, postsResponse] = await Promise.all([
                 feedApi.getViewInformation(userId),

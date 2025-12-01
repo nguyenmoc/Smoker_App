@@ -1,12 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   Animated,
   KeyboardAvoidingView,
   Platform,
+  RefreshControl,
   ScrollView,
   Share,
   StatusBar,
@@ -24,6 +24,79 @@ import { PostMenu } from '@/components/post/PostMenu';
 import { useAuth } from '@/hooks/useAuth';
 import { usePostDetails } from '@/hooks/usePost';
 
+// Skeleton Loading Component
+const SkeletonLoader = () => {
+  const shimmerAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(shimmerAnim, {
+          toValue: 1,
+          duration: 1500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(shimmerAnim, {
+          toValue: 0,
+          duration: 1500,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, []);
+
+  const opacity = shimmerAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.3, 0.7],
+  });
+
+  return (
+    <View style={styles.skeletonContainer}>
+      {/* Skeleton Post Header */}
+      <View style={styles.skeletonPost}>
+        <View style={styles.skeletonPostHeader}>
+          <Animated.View style={[styles.skeletonAvatar, { opacity }]} />
+          <View style={styles.skeletonPostInfo}>
+            <Animated.View style={[styles.skeletonText, { width: 120, height: 16, opacity }]} />
+            <Animated.View style={[styles.skeletonText, { width: 80, height: 12, marginTop: 6, opacity }]} />
+          </View>
+        </View>
+        
+        {/* Skeleton Post Content */}
+        <Animated.View style={[styles.skeletonText, { width: '100%', height: 16, marginTop: 16, opacity }]} />
+        <Animated.View style={[styles.skeletonText, { width: '90%', height: 16, marginTop: 8, opacity }]} />
+        <Animated.View style={[styles.skeletonText, { width: '70%', height: 16, marginTop: 8, opacity }]} />
+        
+        {/* Skeleton Post Image */}
+        <Animated.View style={[styles.skeletonImage, { opacity }]} />
+        
+        {/* Skeleton Actions */}
+        <View style={styles.skeletonActions}>
+          <Animated.View style={[styles.skeletonButton, { opacity }]} />
+          <Animated.View style={[styles.skeletonButton, { opacity }]} />
+          <Animated.View style={[styles.skeletonButton, { opacity }]} />
+        </View>
+      </View>
+
+      {/* Skeleton Comments Section */}
+      <View style={styles.skeletonCommentsSection}>
+        <Animated.View style={[styles.skeletonText, { width: 100, height: 18, marginBottom: 16, opacity }]} />
+        
+        {[1, 2, 3].map((i) => (
+          <View key={i} style={styles.skeletonComment}>
+            <Animated.View style={[styles.skeletonCommentAvatar, { opacity }]} />
+            <View style={styles.skeletonCommentContent}>
+              <Animated.View style={[styles.skeletonText, { width: 100, height: 14, opacity }]} />
+              <Animated.View style={[styles.skeletonText, { width: '100%', height: 14, marginTop: 8, opacity }]} />
+              <Animated.View style={[styles.skeletonText, { width: '80%', height: 14, marginTop: 6, opacity }]} />
+            </View>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+};
+
 export default function PostDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -36,6 +109,7 @@ export default function PostDetailScreen() {
     likePost,
     deletePost,
     updatePost,
+    fetchPostDetails,
   } = usePostDetails(id!);
   const { authState } = useAuth();
   const currentUserId = authState.currentId;
@@ -47,8 +121,15 @@ export default function PostDetailScreen() {
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState('');
   const [editImages, setEditImages] = useState<string[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
   const moreButtonRef = useRef<View>(null);
   const scaleAnim = useRef(new Animated.Value(0)).current;
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchPostDetails(false);
+    setRefreshing(false);
+  };
 
   const handleSubmitComment = async () => {
     if (!commentText.trim() || !post) return;
@@ -59,6 +140,8 @@ export default function PostDetailScreen() {
 
       if (success) {
         setCommentText('');
+      } else {
+        Alert.alert('Lỗi', 'Không thể gửi bình luận');
       }
     } catch (error) {
       Alert.alert('Lỗi', 'Không thể gửi bình luận');
@@ -93,7 +176,7 @@ export default function PostDetailScreen() {
 
   const handleUserPress = (userId: string) => {
     router.push({
-      pathname: '/Pages/user',
+      pathname: '/user',
       params: { id: userId }
     });
   };
@@ -125,7 +208,6 @@ export default function PostDetailScreen() {
   const handleEditPost = () => {
     if (!post) return;
     setEditContent(post.content);
-    // setEditImages(post.images);
     closeMenu();
     setTimeout(() => setIsEditing(true), 200);
   };
@@ -134,15 +216,6 @@ export default function PostDetailScreen() {
     if (!post) return false;
 
     try {
-      // const success = await updatePost(post.id, {
-      //   content: content.trim(),
-      //   images: images,
-      // });
-      // if (success) {
-      //   setIsEditing(false);
-      //   Alert.alert('Thành công', 'Bài viết đã được cập nhật');
-      //   return true;
-      // }
       return false;
     } catch (error) {
       Alert.alert('Lỗi', 'Không thể cập nhật bài viết');
@@ -152,36 +225,7 @@ export default function PostDetailScreen() {
 
   const handleDeletePost = () => {
     if (!post) return;
-
     closeMenu();
-
-    // setTimeout(() => {
-    //   Alert.alert(
-    //     'Xóa bài viết',
-    //     'Bạn có chắc chắn muốn xóa bài viết này?',
-    //     [
-    //       { text: 'Hủy', style: 'cancel' },
-    //       {
-    //         text: 'Xóa',
-    //         style: 'destructive',
-    //         onPress: async () => {
-    //           try {
-    //             const success = await deletePost(post._id);
-    //             if (success) {
-    //               router.back();
-    //               setTimeout(() => {
-    //                 Alert.alert('Thành công', 'Bài viết đã được xóa');
-    //               }, 300);
-    //             }
-    //           } catch (error) {
-    //             Alert.alert('Lỗi', 'Không thể xóa bài viết');
-    //           }
-    //         },
-    //       },
-    //     ],
-    //     { cancelable: true }
-    //   );
-    // }, 200);
   };
 
   if (loading) {
@@ -194,10 +238,7 @@ export default function PostDetailScreen() {
           </TouchableOpacity>
           <View style={styles.headerRight} />
         </View>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#2563eb" />
-          <Text style={styles.loadingText}>Đang tải...</Text>
-        </View>
+        <SkeletonLoader />
       </View>
     );
   }
@@ -268,7 +309,18 @@ export default function PostDetailScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={0}
       >
-        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        <ScrollView 
+          style={styles.scrollView} 
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#2563eb']}
+              tintColor="#2563eb"
+            />
+          }
+        >
           <PostContent
             post={post}
             onUserPress={handleUserPress}
@@ -277,7 +329,7 @@ export default function PostDetailScreen() {
           />
 
           <CommentsList
-            comments={post.comments}
+            comments={comments}
             onUserPress={handleUserPress}
             onLikeComment={likeComment}
           />
@@ -351,5 +403,73 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 16,
     color: '#6b7280',
+  },
+
+  // Skeleton styles
+  skeletonContainer: {
+    flex: 1,
+    backgroundColor: '#f0f2f5',
+  },
+  skeletonPost: {
+    backgroundColor: '#fff',
+    padding: 16,
+    marginBottom: 8,
+  },
+  skeletonPostHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  skeletonAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#e5e7eb',
+  },
+  skeletonPostInfo: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  skeletonText: {
+    backgroundColor: '#e5e7eb',
+    borderRadius: 4,
+  },
+  skeletonImage: {
+    width: '100%',
+    height: 200,
+    backgroundColor: '#e5e7eb',
+    borderRadius: 8,
+    marginTop: 16,
+  },
+  skeletonActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+  },
+  skeletonButton: {
+    width: 80,
+    height: 36,
+    backgroundColor: '#e5e7eb',
+    borderRadius: 8,
+  },
+  skeletonCommentsSection: {
+    backgroundColor: '#fff',
+    padding: 16,
+  },
+  skeletonComment: {
+    flexDirection: 'row',
+    marginBottom: 16,
+  },
+  skeletonCommentAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#e5e7eb',
+  },
+  skeletonCommentContent: {
+    marginLeft: 12,
+    flex: 1,
   },
 });
