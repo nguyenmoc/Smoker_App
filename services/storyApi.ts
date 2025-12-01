@@ -76,10 +76,6 @@ export class StoryApiService {
       formData.append('content', storyData.content);
     }
 
-    if (storyData.caption) {
-      formData.append('caption', storyData.caption);
-    }
-
     if (storyData.songId) {
       formData.append('songId', storyData.songId);
     }
@@ -87,9 +83,16 @@ export class StoryApiService {
     if (storyData.expiredAt) {
       formData.append('expiredAt', storyData.expiredAt);
     }
+    if (storyData.status){
+        formData.append('status', storyData.status);
+    }
 
     if (storyData.image) {
-      formData.append('images', storyData.image as any);
+      formData.append('images', storyData.image);
+    }
+
+    if (storyData.entityAccountId) {
+        formData.append('entityAccountId', storyData.entityAccountId);
     }
 
     try {

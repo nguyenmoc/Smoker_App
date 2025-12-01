@@ -176,7 +176,7 @@ export default function PostDetailScreen() {
 
   const handleUserPress = (userId: string) => {
     router.push({
-      pathname: '/Pages/user',
+      pathname: '/user',
       params: { id: userId }
     });
   };

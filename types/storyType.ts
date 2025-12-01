@@ -38,12 +38,9 @@ export interface CreateStoryData {
   content?: string;
   songId?: string;
   expiredAt?: string;
-  image?: {
-    uri: string;
-    type: string;
-    name: string;
-  };
+  image?: string
   entityAccountId: string;
+  status: string;
 }
 
 export interface StoryViewer {
