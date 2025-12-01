@@ -107,7 +107,9 @@ export const useMessages = (messageApi: MessageApiService | null, conversationId
     if (!messageApi || !currentUserId) return;
 
     try {
-      const lastMessageId = messages.length > 0 ? messages[messages.length - 1]._id : null; // Latest message
+      // Find the last message not sent by current user to avoid "Cannot mark own message as read" error
+      const lastMessageNotMine = [...messages].reverse().find(msg => msg.sender_id !== currentUserId);
+      const lastMessageId = lastMessageNotMine ? lastMessageNotMine._id : null;
       await messageApi.markMessagesRead(conversationId, currentUserId, lastMessageId);
     } catch (err) {
       console.error('Failed to mark messages as read:', err);
