@@ -35,10 +35,10 @@ const PHOTO_SIZE = (screenWidth - 4) / 3;
 const getAllPhotos = (posts: any[]) => {
     const photos: any[] = [];
     posts.forEach((post) => {
-        post.mediaIds.forEach((image: string) => {
+        post.mediaIds.forEach((image: any) => {
             photos.push({
                 id: `${post.id}-${image}`,
-                uri: image,
+                uri: image.url,
                 postId: post.id,
             });
         });
