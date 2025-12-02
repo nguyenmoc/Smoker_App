@@ -2,11 +2,12 @@ import AnimatedHeader from '@/components/ui/AnimatedHeader';
 import { useAuth } from '@/hooks/useAuth';
 import { MessageApiService } from '@/services/messageApi';
 import publicProfileApi from '@/services/publicProfileApi';
-import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Animated, FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useRouter, useFocusEffect } from 'expo-router';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Animated, FlatList, Image, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { PublicProfileData } from '@/types/profileType';
+import { useSocket } from '@/hooks/useSocket';
 
 interface Conversation {
   _id: string;
@@ -31,27 +32,22 @@ export default function ConversationsScreen() {
   const { authState } = useAuth();
   const currentUserId = authState.currentId;
   const token = authState.token;
-  const messageApi = token ? new MessageApiService(token) : null;
+  const messageApi = useMemo(() => token ? new MessageApiService(token) : null, [token]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [profiles, setProfiles] = useState<Record<string, PublicProfileData>>({});
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const headerTranslateY = new Animated.Value(0);
+  const { socket } = useSocket();
+  const isLoadingConversations = useRef(false);
 
-  useEffect(() => {
-    if (token) {
-      loadConversations();
-    } else {
-      setLoading(false);
-    }
-  }, [token]);
+  const loadConversations = useCallback(async () => {
+    if (!messageApi || isLoadingConversations.current) return;
 
-  const loadConversations = async () => {
-    if (!messageApi) return;
-
+    isLoadingConversations.current = true;
     try {
       setLoading(true);
-      const data = await messageApi.getConversations(authState.EntityAccountId);
-    //   console.log('Loaded conversations:', data);
+      const data = await messageApi.getConversations(authState.EntityAccountId) as Conversation[];
       setConversations(data || []);
 
       // Fetch profiles for participants
@@ -69,8 +65,57 @@ export default function ConversationsScreen() {
       console.error('Error loading conversations:', error);
     } finally {
       setLoading(false);
+      isLoadingConversations.current = false;
     }
-  };
+  }, [messageApi, authState.EntityAccountId]);
+
+  const debouncedLoadConversations = useMemo(() => {
+    let timeoutId: number;
+    return () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        loadConversations();
+      }, 1000); // debounce 1 second
+    };
+  }, [loadConversations]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (token) {
+        loadConversations();
+      } else {
+        setLoading(false);
+      }
+    }, [token, loadConversations])
+  );
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleMessagesRead = () => {
+      console.log('Received messages_read event');
+      // debouncedLoadConversations();
+    };
+
+    const handleNewMessage = () => {
+      console.log('Received new_message event');
+      // debouncedLoadConversations();
+    };
+
+    socket.on('messages_read', handleMessagesRead);
+    socket.on('new_message', handleNewMessage);
+
+    return () => {
+      socket.off('messages_read', handleMessagesRead);
+      socket.off('new_message', handleNewMessage);
+    };
+  }, [socket, debouncedLoadConversations]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadConversations();
+    setRefreshing(false);
+  }, [loadConversations]);
 
   const handleConversationPress = (conversationId: string) => {
     router.push({
@@ -117,7 +162,10 @@ export default function ConversationsScreen() {
 
       <View style={styles.content}>
         {loading ? (
-          <ActivityIndicator size="large" color="#2563eb" />
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#2563eb" />
+            <Text style={styles.loadingText}>Đang tải danh sách trò chuyện...</Text>
+          </View>
         ) : conversations.length === 0 ? (
           <Text style={styles.emptyText}>Chưa có cuộc trò chuyện nào</Text>
         ) : (
@@ -127,6 +175,9 @@ export default function ConversationsScreen() {
             keyExtractor={(item) => item._id}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingTop: 60 }}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            }
           />
         )}
       </View>
@@ -194,5 +245,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#6b7280',
     marginTop: 100,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#6b7280',
   },
 });

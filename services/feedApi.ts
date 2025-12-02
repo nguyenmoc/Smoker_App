@@ -185,6 +185,13 @@ export class FeedApiService {
         return this.makeRequest<Post[]>(`/posts/author/${accountId}`,{method: 'GET'});
     }
 
+    async getFollowers(accountId: string): Promise<ApiResponse<Post[]>> {
+        return this.makeRequest<Post[]>(`/follow/followers/${accountId}`,{method: 'GET'});
+    }
+    async getFollowing(accountId: string): Promise<ApiResponse<Post[]>> {
+        return this.makeRequest<Post[]>(`/follow/following/${accountId}`,{method: 'GET'});
+    }
+
     async followUser(followerId: string, followingId: string, followingType: string): Promise<ApiResponse<{
         isFollowing: boolean
     }>> {

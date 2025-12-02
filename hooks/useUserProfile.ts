@@ -8,6 +8,8 @@ export const useUserProfile = (userId: string) => {
     const [user, setUser] = useState<User | null>(null);
     const [posts, setPosts] = useState<Post[]>([]);
     const [loading, setLoading] = useState(false);
+    const [followers, setFollowers] = useState<any[]>([]);
+    const [following, setFollowing] = useState<any[]>([]);
     const [error, setError] = useState<string | null>(null);
 
     const {authState} = useAuth();
@@ -17,11 +19,12 @@ export const useUserProfile = (userId: string) => {
     const fetchUserProfile = useCallback(async () => {
         setLoading(true);
         setError(null);
-        debugger
         try {
-            const [userResponse, postsResponse] = await Promise.all([
+            const [userResponse, postsResponse, followersResponse, followingResponse] = await Promise.all([
                 feedApi.getViewInformation(userId),
-                feedApi.getUserPosts(userId)
+                feedApi.getUserPosts(userId),
+                feedApi.getFollowers(userId),
+                feedApi.getFollowing(userId)
             ]);            
 
             if (userResponse.success && userResponse.data) {
@@ -34,9 +37,14 @@ export const useUserProfile = (userId: string) => {
             } else {
                 setError('Không tìm thấy người dùng');
             }
-
             if (postsResponse.success && postsResponse.data) {
                 setPosts(postsResponse.data);
+            }
+            if (followingResponse?.data) {
+                setFollowing(followingResponse.data);
+            }
+            if (followersResponse?.data) {
+                setFollowers(followersResponse.data);
             }
         } catch (err) {
             console.error('Error fetching user profile:', err);
@@ -85,6 +93,8 @@ export const useUserProfile = (userId: string) => {
     return {
         user,
         posts,
+        followers,
+        following,
         loading,
         error,
         fetchUserProfile,

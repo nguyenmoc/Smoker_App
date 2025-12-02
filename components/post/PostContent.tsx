@@ -18,7 +18,7 @@ interface PostContentProps {
   post: Post;
   onUserPress: (userId: string) => void;
   onLike: () => void;
-  onShare: () => void;
+  onShare: (data: any) => void;
 }
 
 export const PostContent: React.FC<PostContentProps> = ({
@@ -137,10 +137,10 @@ export const PostContent: React.FC<PostContentProps> = ({
 
         <TouchableOpacity
           style={styles.actionButton}
-          onPress={onShare}
+          onPress={() => {onShare(post)}}
         >
-          <Ionicons name="share-outline" size={22} color="#6b7280" />
-          <Text style={styles.actionText}>Chia sẻ</Text>
+          <Ionicons name="repeat-outline" size={22} color="#6b7280" />
+          <Text style={styles.actionText}>Đăng lại</Text>
         </TouchableOpacity>
       </View>
     </View>
