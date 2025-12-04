@@ -11,6 +11,7 @@ import {
   Dimensions,
   Image,
   Pressable,
+  RefreshControl,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -53,8 +54,8 @@ const TableCard: React.FC<{
             isBooked
               ? ["#94a3b8", "#cbd5e1"]
               : isSelected
-              ? [item.color, `${item.color}dd`]
-              : [`${item.color}40`, `${item.color}20`]
+                ? [item.color, `${item.color}dd`]
+                : [`${item.color}40`, `${item.color}20`]
           }
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
@@ -185,7 +186,7 @@ const SkeletonCard = () => {
   );
 };
 
-const BarDetail: React.FC<any> = ({}) => {
+const BarDetail: React.FC<any> = ({ }) => {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const {
@@ -201,7 +202,7 @@ const BarDetail: React.FC<any> = ({}) => {
     createBooking,
     createPaymentLink,
   } = useBar();
-
+  const [refreshing, setRefreshing] = useState(false);
   const [selectedTables, setSelectedTables] = useState<BarTable[]>([]);
   const [selectedDate, setSelectedDate] = useState(
     new Date().toISOString().split("T")[0]
@@ -229,6 +230,25 @@ const BarDetail: React.FC<any> = ({}) => {
 
   const handleBackPress = () => {
     router.back();
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        fetchBarDetail(id),
+        fetchTables(id),
+        barDetail?.entityAccountId &&
+        fetchBookedTables(
+          barDetail.entityAccountId,
+          selectedDate.toISOString().split("T")[0]
+        ),
+      ]);
+    } catch (error) {
+      console.error("Refresh error:", error);
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const handleTableSelect = (table: BarTable) => {
@@ -274,8 +294,8 @@ const BarDetail: React.FC<any> = ({}) => {
       Alert.alert(
         "Xác nhận đặt bàn",
         `Bàn: ${selectedTables.map((t) => t.tableName).join(", ")}\n` +
-          `Tổng tiền cọc: ${totalDepositAmount.toLocaleString()}₫\n\n` +
-          `Xác nhận đặt bàn?`,
+        `Tổng tiền cọc: ${totalDepositAmount.toLocaleString()}₫\n\n` +
+        `Xác nhận đặt bàn?`,
         [
           {
             text: "Hủy",
@@ -393,7 +413,12 @@ const BarDetail: React.FC<any> = ({}) => {
         </View>
       </SafeAreaView>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+        }
+      >
         {/* Bar Image */}
         <View style={styles.imageContainer}>
           <Image
