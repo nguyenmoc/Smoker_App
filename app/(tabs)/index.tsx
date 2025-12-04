@@ -1,29 +1,28 @@
-import {CreateStoryModal} from '@/components/story/CreateStoryModal';
-import {StoryList} from '@/components/story/StoryList';
-import {StoryViewer} from '@/components/story/StoryViewer';
+import { Index as RenderPost } from "@/components/renderPost";
+import { CreateStoryModal } from '@/components/story/CreateStoryModal';
+import { StoryList } from '@/components/story/StoryList';
+import { StoryViewer } from '@/components/story/StoryViewer';
 import AnimatedHeader from '@/components/ui/AnimatedHeader';
-import {useAuth} from '@/hooks/useAuth';
-import {useFeed} from '@/hooks/useFeed';
-import {useSocket} from '@/hooks/useSocket';
-import {useStory} from '@/hooks/useStory';
-import {MessageApiService} from '@/services/messageApi';
-import {PostData} from '@/types/postType';
-import {StoryData} from '@/types/storyType';
-import {Ionicons} from '@expo/vector-icons';
-import {ResizeMode, Video} from 'expo-av';
+import { useAuth } from '@/hooks/useAuth';
+import { useFeed } from '@/hooks/useFeed';
+import { useSocket } from '@/hooks/useSocket';
+import { useStory } from '@/hooks/useStory';
+import { FeedApiService } from "@/services/feedApi";
+import { MessageApiService } from '@/services/messageApi';
+import { StoryData } from '@/types/storyType';
+import { Ionicons } from '@expo/vector-icons';
+import { ResizeMode, Video } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
-import {useRouter} from 'expo-router';
-import React, {useCallback, useEffect, useRef, useState} from 'react';
+import { useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
     Animated,
-    Dimensions,
     Image,
     Modal,
     RefreshControl,
     ScrollView,
-    Share,
     StatusBar,
     StyleSheet,
     Text,
@@ -31,9 +30,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
-import {FeedApiService} from "@/services/feedApi";
-import {Index as RenderPost} from "@/components/renderPost";
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const PostInputBox = ({openModal, pickMedia, avatar}: {
     openModal: () => void;
@@ -482,7 +479,6 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f9fafb'
     },
     postBox: {
         flexDirection: 'row',

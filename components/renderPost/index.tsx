@@ -1,12 +1,12 @@
-﻿import {Alert, Image, Text, TouchableOpacity, View} from "react-native";
-import {Ionicons} from "@expo/vector-icons";
-import {formatTime} from "@/utils/extension";
-import React, {useCallback, useState} from "react";
-import {styles} from "./style"
-import {useRouter} from "expo-router";
-import {PostData} from "@/types/postType";
-import {FeedApiService} from "@/services/feedApi";
-import ShowMedia from "@/components/renderPost/showMedia";
+﻿import ShowMedia from "@/components/renderPost/showMedia";
+import { FeedApiService } from "@/services/feedApi";
+import { PostData } from "@/types/postType";
+import { formatTime } from "@/utils/extension";
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import React, { useCallback, useState } from "react";
+import { Alert, Image, Text, TouchableOpacity, View } from "react-native";
+import { styles } from "./style";
 
 interface RenderPostProps {
     item?: any,
@@ -18,7 +18,7 @@ interface RenderPostProps {
     refresh: () => void
 }
 
-export function Index({item, currentId, feedApi, entityAccountId, isDisable = false, isDisableInProfile = false, refresh}: RenderPostProps) {
+export function Index({ item, currentId, feedApi, entityAccountId, isDisable = false, isDisableInProfile = false, refresh }: RenderPostProps) {
     const router = useRouter();
     const [data, setData] = useState<PostData>(item);
     const likeCount = Object.keys(data.likes || {}).length;
@@ -30,7 +30,7 @@ export function Index({item, currentId, feedApi, entityAccountId, isDisable = fa
     const handlePostPress = (postId: string) => {
         router.push({
             pathname: '/post',
-            params: {id: postId}
+            params: { id: postId }
         });
     };
 
@@ -50,7 +50,7 @@ export function Index({item, currentId, feedApi, entityAccountId, isDisable = fa
                 }));
             } else {
                 setData(prev => {
-                    const updatedLikes = {...prev.likes};
+                    const updatedLikes = { ...prev.likes };
                     delete updatedLikes[currentId];
                     return {
                         ...prev,
@@ -64,7 +64,7 @@ export function Index({item, currentId, feedApi, entityAccountId, isDisable = fa
     const handleUserPress = useCallback((userId: string) => {
         router.push({
             pathname: '/user',
-            params: {id: userId}
+            params: { id: userId }
         });
     }, [router]);
 
@@ -116,7 +116,7 @@ export function Index({item, currentId, feedApi, entityAccountId, isDisable = fa
                         onStartShouldSetResponder={() => true}
                         disabled={isDisableInProfile}
                     >
-                        <Image source={{uri: item.authorAvatar}} style={styles.avatar}/>
+                        <Image source={{ uri: item.authorAvatar }} style={styles.avatar} />
                     </TouchableOpacity>
                     <View style={styles.headerInfo}>
                         <TouchableOpacity
@@ -144,7 +144,7 @@ export function Index({item, currentId, feedApi, entityAccountId, isDisable = fa
                                         onPress={() => handleUserPress(data.originalPost?.entityAccountId)}
                                         onStartShouldSetResponder={() => true}
                                     >
-                                        <Image source={{uri: data.originalPost?.authorAvatar}} style={styles.avatar}/>
+                                        <Image source={{ uri: data.originalPost?.authorAvatar }} style={styles.avatar} />
                                     </TouchableOpacity>
                                     <View style={styles.headerInfo}>
                                         <TouchableOpacity
@@ -161,13 +161,13 @@ export function Index({item, currentId, feedApi, entityAccountId, isDisable = fa
 
                                 <Text style={styles.content}>{data.content}</Text>
 
-                                <ShowMedia item={item}/>
+                                <ShowMedia item={item} />
                             </View>
                         </TouchableOpacity>
                     ) : (<>
-                        <View  style={styles.boxCard}>
+                        <View style={styles.boxCard}>
                             <Text style={styles.content}>{data.content}</Text>
-                            <ShowMedia item={item}/>
+                            <ShowMedia item={item} />
                         </View>
                     </>)
                 }
@@ -192,7 +192,7 @@ export function Index({item, currentId, feedApi, entityAccountId, isDisable = fa
                         />
                         <Text style={[
                             styles.actionText,
-                            isLiked && {color: '#ef4444'}
+                            isLiked && { color: '#ef4444' }
                         ]}>
                             {isLiked ? 'Đã thích' : 'Thích'}
                         </Text>
@@ -201,7 +201,7 @@ export function Index({item, currentId, feedApi, entityAccountId, isDisable = fa
                     <View
                         style={styles.actionBtn}
                     >
-                        <Ionicons name="chatbubble-outline" size={18} color="#6b7280"/>
+                        <Ionicons name="chatbubble-outline" size={18} color="#6b7280" />
                         <Text style={styles.actionText}>Bình luận</Text>
                     </View>
 
@@ -209,7 +209,7 @@ export function Index({item, currentId, feedApi, entityAccountId, isDisable = fa
                         style={styles.actionBtn}
                         onPress={handleRepost}
                     >
-                        <Ionicons name="repeat-outline" size={18} color="#6b7280"/>
+                        <Ionicons name="repeat-outline" size={18} color="#6b7280" />
                         <Text style={styles.actionText}>Đăng lại</Text>
                     </TouchableOpacity>
                 </View>

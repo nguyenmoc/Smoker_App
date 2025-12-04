@@ -1,10 +1,11 @@
-import {Index as RenderPost} from "@/components/renderPost";
-import {useAuth} from '@/hooks/useAuth';
-import {useUserProfile} from '@/hooks/useUserProfile';
-import {MessageApiService} from '@/services/messageApi';
-import {Ionicons} from '@expo/vector-icons';
-import {useLocalSearchParams, useRouter} from 'expo-router';
-import React, {useRef, useState} from 'react';
+import { Index as RenderPost } from "@/components/renderPost";
+import { useAuth } from '@/hooks/useAuth';
+import { useUserProfile } from '@/hooks/useUserProfile';
+import { FeedApiService } from "@/services/feedApi";
+import { MessageApiService } from '@/services/messageApi';
+import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useRef } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -18,8 +19,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
-import {FeedApiService} from "@/services/feedApi";
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const {width: screenWidth} = Dimensions.get('window');
 const imageSize = (screenWidth - 32 - 8) / 3;
@@ -328,7 +328,6 @@ export default function User() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f9fafb',
     },
     header: {
         position: 'absolute',

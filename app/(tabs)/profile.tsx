@@ -1,13 +1,14 @@
-import {ProfileHeader} from '@/components/ProfileHeader';
-import {Index as RenderPost} from "@/components/renderPost";
-import {SidebarMenu} from '@/components/SidebarMenu';
-import {fieldLabels} from '@/constants/profileData';
-import {useAuth} from '@/hooks/useAuth';
-import {useProfile} from '@/hooks/useProfile';
-import {Ionicons} from '@expo/vector-icons';
+import { ProfileHeader } from '@/components/ProfileHeader';
+import { Index as RenderPost } from "@/components/renderPost";
+import { SidebarMenu } from '@/components/SidebarMenu';
+import { fieldLabels } from '@/constants/profileData';
+import { useAuth } from '@/hooks/useAuth';
+import { useProfile } from '@/hooks/useProfile';
+import { FeedApiService } from "@/services/feedApi";
+import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import {useRouter} from 'expo-router';
-import React, {useCallback, useRef, useState} from 'react';
+import { useRouter } from 'expo-router';
+import React, { useCallback, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -26,8 +27,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {FeedApiService} from "@/services/feedApi";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const {width: screenWidth} = Dimensions.get('window');
 const PHOTO_SIZE = (screenWidth - 4) / 3;
