@@ -3,31 +3,35 @@ import {
   BarDetail,
   BarDetailApiResponseWrapper,
   BarItem,
-  ComboItem,
 } from "@/types/barType";
-import { mapBarDetail, mapComboList } from "@/utils/mapper";
+import {
+  BarTable,
+  BookingItem,
+  CreateBookingRequest,
+} from "@/types/tableType";
+import { mapBarDetail, mapBarTableList } from "@/utils/mapper";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "./useAuth";
 
 export const useBar = () => {
   const [bars, setBars] = useState<BarItem[]>([]);
   const [barDetail, setBarDetail] = useState<BarDetail | null>(null);
-  const [combos, setCombos] = useState<ComboItem[]>([]);
+  const [tables, setTables] = useState<BarTable[]>([]);
+  const [bookedTables, setBookedTables] = useState<BookingItem[]>([]);
 
   const [loading, setLoading] = useState(false);
   const [loadingDetail, setLoadingDetail] = useState(false);
-  const [loadingCombo, setLoadingCombo] = useState(false);
+  const [loadingTables, setLoadingTables] = useState(false);
+  const [loadingBooking, setLoadingBooking] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
 
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-
   const [refreshing, setRefreshing] = useState(false);
 
   const { authState } = useAuth();
 
-  // Fix: Use useMemo để tránh tạo instance mới mỗi lần render
   const barApi = useMemo(
     () => new BarApiService(authState.token!),
     [authState.token]
@@ -90,24 +94,103 @@ export const useBar = () => {
     [barApi]
   );
 
-  const fetchCombos = useCallback(
+  const fetchTables = useCallback(
     async (barId: string) => {
-      setLoadingCombo(true);
+      setLoadingTables(true);
       setError(null);
 
       try {
-        const response = await barApi.getBarCombos(barId);
+        const response = await barApi.getBarTables(barId);
+        console.log('table>>>>', response);
 
         if (response.data) {
-          const mapped = mapComboList(response.data);
-          setCombos(mapped);
+          const mappedTables = mapBarTableList(response.data);
+          setTables(mappedTables);
         } else {
-          setError(response.message || "Không thể tải combos");
+          setError(response.message || "Không thể tải danh sách bàn");
+          setTables([]);
         }
       } catch (err) {
-        setError("Lỗi tải combo");
+        console.error('Error fetching tables:', err);
+        setError("Lỗi tải danh sách bàn");
+        setTables([]);
       } finally {
-        setLoadingCombo(false);
+        setLoadingTables(false);
+      }
+    },
+    [barApi]
+  );
+
+  const fetchBookedTables = useCallback(
+    async (entityAccountId: string, date: string) => {
+      setLoadingTables(true);
+      setError(null);
+
+      try {
+        const response = await barApi.getBookedTables(entityAccountId, date);
+
+        if (response.success && response.data) {
+          setBookedTables(response.data || []);
+        } else {
+          setError(response.message || "Không thể tải thông tin đặt bàn");
+          setBookedTables([]);
+        }
+      } catch (err) {
+        setError("Lỗi tải thông tin đặt bàn");
+        setBookedTables([]);
+      } finally {
+        setLoadingTables(false);
+      }
+    },
+    [barApi]
+  );
+
+  const createBooking = useCallback(
+    async (bookingData: CreateBookingRequest) => {
+      setLoadingBooking(true);
+      setError(null);
+
+      try {
+        const response = await barApi.createBooking(bookingData);
+
+        if (response.success && response.data) {
+          return response.data;
+        } else {
+          setError(response.message || "Không thể đặt bàn");
+          return null;
+        }
+      } catch (err) {
+        setError("Lỗi đặt bàn");
+        return null;
+      } finally {
+        setLoadingBooking(false);
+      }
+    },
+    [barApi]
+  );
+
+  const createPaymentLink = useCallback(
+    async (bookedScheduleId: string, depositAmount: number) => {
+      setLoadingBooking(true);
+      setError(null);
+
+      try {
+        const response = await barApi.createPaymentLink(
+          bookedScheduleId,
+          depositAmount
+        );
+
+        if (response.success && response.data) {
+          return response.data;
+        } else {
+          setError(response.message || "Không thể tạo link thanh toán");
+          return null;
+        }
+      } catch (err) {
+        setError("Lỗi tạo link thanh toán");
+        return null;
+      } finally {
+        setLoadingBooking(false);
       }
     },
     [barApi]
@@ -120,15 +203,20 @@ export const useBar = () => {
   return {
     bars,
     barDetail,
-    combos,
+    tables,
+    bookedTables,
     loading,
     loadingDetail,
-    loadingCombo,
+    loadingTables,
+    loadingBooking,
     error,
     hasMore,
     refreshing,
     fetchBars,
     fetchBarDetail,
-    fetchCombos,
+    fetchTables,
+    fetchBookedTables,
+    createBooking,
+    createPaymentLink,
   };
 };

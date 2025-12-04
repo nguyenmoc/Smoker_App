@@ -1,9 +1,9 @@
 import { useBar } from "@/hooks/useBar";
-import { ComboItem } from "@/types/barType";
+import { BarTable } from "@/types/tableType";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -11,6 +11,7 @@ import {
   Dimensions,
   FlatList,
   Image,
+  Linking,
   Pressable,
   ScrollView,
   StatusBar,
@@ -22,9 +23,16 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const { width } = Dimensions.get("window");
 
-// Combo Card Component (separate to use hooks properly)
-const ComboCard: React.FC<{ item: ComboItem; index: number }> = ({ item, index }) => {
+// Table Card Component
+const TableCard: React.FC<{
+  item: BarTable;
+  index: number;
+  isSelected: boolean;
+  isBooked: boolean;
+  onSelect: (table: BarTable) => void;
+}> = ({ item, index, isSelected, isBooked, onSelect }) => {
   const animValue = useRef(new Animated.Value(0)).current;
+  const scaleValue = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     Animated.spring(animValue, {
@@ -36,10 +44,28 @@ const ComboCard: React.FC<{ item: ComboItem; index: number }> = ({ item, index }
     }).start();
   }, []);
 
+  useEffect(() => {
+    Animated.spring(scaleValue, {
+      toValue: isSelected ? 1.05 : 1,
+      tension: 50,
+      friction: 7,
+      useNativeDriver: true,
+    }).start();
+  }, [isSelected]);
+
+  const handlePress = () => {
+    if (!isBooked) {
+      onSelect(item);
+    }
+  };
+
   return (
     <Animated.View
       style={[
-        styles.comboCard,
+        styles.tableCard,
+        isBooked && styles.tableCardBooked,
+        isSelected && styles.tableCardSelected,
+        { borderColor: item.color || 'transparent' },
         {
           opacity: animValue,
           transform: [
@@ -49,28 +75,81 @@ const ComboCard: React.FC<{ item: ComboItem; index: number }> = ({ item, index }
                 outputRange: [20, 0],
               }),
             },
-            {
-              scale: animValue,
-            },
+            { scale: scaleValue },
           ],
         },
       ]}
     >
-      <View style={styles.comboHeader}>
-        <View style={styles.comboIconContainer}>
-          <Ionicons name="beer-outline" size={24} color="#3b82f6" />
+      <Pressable
+        onPress={handlePress}
+        disabled={isBooked}
+        style={styles.tableCardPressable}
+      >
+        <View style={styles.tableHeader}>
+          <View
+            style={[
+              styles.tableIconContainer,
+              isBooked && styles.tableIconBooked,
+              isSelected && styles.tableIconSelected,
+              { backgroundColor: isSelected ? item.color : `${item.color}20` },
+            ]}
+          >
+            <Ionicons
+              name={isBooked ? "lock-closed" : "restaurant-outline"}
+              size={24}
+              color={isBooked ? "#94a3b8" : isSelected ? "#fff" : item.color}
+            />
+          </View>
+          {isSelected && (
+            <View style={styles.selectedBadge}>
+              <Ionicons name="checkmark-circle" size={20} color="#10b981" />
+            </View>
+          )}
         </View>
-      </View>
-      <Text style={styles.comboName} numberOfLines={2}>
-        {item.comboName}
-      </Text>
-      <Text style={styles.comboPrice}>{item.price.toLocaleString()}₫</Text>
-      {item.voucherApplyId && (
-        <View style={styles.voucherBadge}>
-          <Ionicons name="pricetag" size={12} color="#fff" />
-          <Text style={styles.voucherText}>Voucher</Text>
+        <Text
+          style={[
+            styles.tableName,
+            isBooked && styles.tableNameBooked,
+            isSelected && styles.tableNameSelected,
+          ]}
+          numberOfLines={1}
+        >
+          {item.tableName}
+        </Text>
+        <View style={styles.tableTypeContainer}>
+          <Text
+            style={[styles.tableType, isBooked && styles.tableTextBooked]}
+          >
+            {item.tableTypeName}
+          </Text>
         </View>
-      )}
+        <View style={styles.tableInfo}>
+          <Ionicons
+            name="people-outline"
+            size={16}
+            color={isBooked ? "#94a3b8" : "#64748b"}
+          />
+          <Text
+            style={[styles.tableCapacity, isBooked && styles.tableTextBooked]}
+          >
+            {item.capacity} người
+          </Text>
+        </View>
+        <Text
+          style={[
+            styles.tablePrice,
+            isBooked && styles.tablePriceBooked,
+            isSelected && styles.tablePriceSelected,
+          ]}
+        >
+          {item.depositPrice.toLocaleString()}₫
+        </Text>
+        {isBooked && (
+          <View style={styles.bookedBadge}>
+            <Text style={styles.bookedText}>Đã đặt</Text>
+          </View>
+        )}
+      </Pressable>
     </Animated.View>
   );
 };
@@ -103,12 +182,12 @@ const SkeletonCard = () => {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-      
-      {/* Skeleton Header */}
+      <StatusBar
+        barStyle="light-content"
+        translucent
+        backgroundColor="transparent"
+      />
       <Animated.View style={[styles.skeletonHeader, { opacity }]} />
-
-      {/* Skeleton Info Card */}
       <View style={styles.skeletonInfoCard}>
         <Animated.View
           style={[styles.skeletonText, { width: "70%", height: 28, opacity }]}
@@ -125,35 +204,19 @@ const SkeletonCard = () => {
             { width: "60%", height: 16, marginTop: 8, opacity },
           ]}
         />
-        <Animated.View
-          style={[
-            styles.skeletonText,
-            { width: "50%", height: 16, marginTop: 8, opacity },
-          ]}
-        />
-
-        {/* Skeleton Stats */}
         <View style={styles.skeletonStatsContainer}>
           {[1, 2, 3].map((i) => (
-            <Animated.View
-              key={i}
-              style={[styles.skeletonStat, { opacity }]}
-            />
+            <Animated.View key={i} style={[styles.skeletonStat, { opacity }]} />
           ))}
         </View>
       </View>
-
-      {/* Skeleton Combos */}
       <View style={styles.section}>
         <Animated.View
           style={[styles.skeletonText, { width: 150, height: 24, opacity }]}
         />
-        <View style={styles.skeletonComboList}>
-          {[1, 2].map((i) => (
-            <Animated.View
-              key={i}
-              style={[styles.skeletonCombo, { opacity }]}
-            />
+        <View style={styles.skeletonTableList}>
+          {[1, 2, 3, 4].map((i) => (
+            <Animated.View key={i} style={[styles.skeletonTable, { opacity }]} />
           ))}
         </View>
       </View>
@@ -166,12 +229,22 @@ const BarDetail: React.FC<any> = ({}) => {
   const router = useRouter();
   const {
     barDetail,
-    combos,
+    tables,
+    bookedTables,
     loadingDetail,
-    loadingCombo,
+    loadingTables,
+    loadingBooking,
     fetchBarDetail,
-    fetchCombos,
+    fetchTables,
+    fetchBookedTables,
+    createBooking,
+    createPaymentLink,
   } = useBar();
+
+  const [selectedTables, setSelectedTables] = useState<BarTable[]>([]);
+  const [selectedDate, setSelectedDate] = useState(
+    new Date().toISOString().split("T")[0]
+  );
 
   // Animation refs
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -181,8 +254,14 @@ const BarDetail: React.FC<any> = ({}) => {
 
   useEffect(() => {
     fetchBarDetail(id);
-    fetchCombos(id);
+    fetchTables(id);
   }, [id]);
+
+  useEffect(() => {
+    if (barDetail?.entityAccountId) {
+      fetchBookedTables(barDetail.entityAccountId, selectedDate);
+    }
+  }, [barDetail?.entityAccountId, selectedDate]);
 
   useEffect(() => {
     if (!loadingDetail && barDetail) {
@@ -212,7 +291,37 @@ const BarDetail: React.FC<any> = ({}) => {
     router.back();
   };
 
+  const handleTableSelect = (table: BarTable) => {
+    setSelectedTables((prev) => {
+      const isSelected = prev.some((t) => t.tableId === table.tableId);
+      if (isSelected) {
+        return prev.filter((t) => t.tableId !== table.tableId);
+      } else {
+        return [...prev, table];
+      }
+    });
+  };
+
+  const isTableBooked = (tableId: string): boolean => {
+    if (!bookedTables || bookedTables.length === 0) return false;
+    
+    return bookedTables.some((booking) => {
+      if (booking.ScheduleStatus === "Canceled") return false;
+      return Object.keys(booking.detailSchedule?.Table || {}).includes(tableId);
+    });
+  };
+
+  const calculateTotalAmount = (): number => {
+    if (!selectedTables || selectedTables.length === 0) return 0;
+    return selectedTables.reduce((sum, table) => sum + table.depositPrice, 0);
+  };
+
   const handleBookingPress = () => {
+    if (selectedTables.length === 0) {
+      Alert.alert("Thông báo", "Vui lòng chọn ít nhất một bàn!");
+      return;
+    }
+
     Animated.sequence([
       Animated.timing(buttonScale, {
         toValue: 0.95,
@@ -229,52 +338,115 @@ const BarDetail: React.FC<any> = ({}) => {
     handleBookTable();
   };
 
-  const handleBookTable = async () => {
-    try {
-      Alert.alert(
-        "Đặt bàn",
-        `Bạn muốn đặt bàn tại ${barDetail?.barName}?`,
-        [
-          {
-            text: "Hủy",
-            style: "cancel",
-          },
-          {
-            text: "Xác nhận",
-            onPress: async () => {
-              // TODO: Thay bằng API call thực tế
-              // Ví dụ:
-              // const bookingData = {
-              //   barId: id,
-              //   date: selectedDate,
-              //   time: selectedTime,
-              //   numberOfGuests: guestCount,
-              //   customerName: userName,
-              //   phoneNumber: userPhone,
-              // };
-              // 
-              // const response = await bookingApi.createBooking(bookingData);
-              // 
-              // if (response.success) {
-              //   Alert.alert("Thành công", "Đặt bàn thành công!");
-              //   router.push("/bookings");
-              // } else {
-              //   Alert.alert("Lỗi", response.message);
-              // }
+const handleBookTable = async () => {
+  try {
+    const totalAmount = calculateTotalAmount();
+    const depositAmount = Math.round(totalAmount * 0.3); // 30% deposit
 
-              Alert.alert("Thành công", "Đặt bàn thành công!");
-            },
+    Alert.alert(
+      "Xác nhận đặt bàn",
+      `Bàn: ${selectedTables.map((t) => t.tableName).join(", ")}\n` +
+        `Tổng tiền cọc: ${totalAmount.toLocaleString()}₫\n` +
+        `Thanh toán trước (30%): ${depositAmount.toLocaleString()}₫\n\n` +
+        `Xác nhận đặt bàn?`,
+      [
+        {
+          text: "Hủy",
+          style: "cancel",
+        },
+        {
+          text: "Đặt bàn",
+          onPress: async () => {
+            try {
+              const bookingData = {
+                receiverId: barDetail!.entityAccountId,
+                tables: selectedTables.map((t) => ({
+                  id: t.tableId,
+                  tableName: t.tableName,
+                  price: t.depositPrice,
+                })),
+                note: `Đặt bàn - ${new Date().toLocaleString()}`,
+                totalAmount,
+                bookingDate: selectedDate,
+                startTime: `${selectedDate}T00:00:00.000Z`,
+                endTime: `${selectedDate}T23:59:59.999Z`,
+                paymentStatus: "Pending",
+                scheduleStatus: "Confirmed",
+              };
+
+              console.log('bookingData>>>>', bookingData);
+              const bookingResult = await createBooking(bookingData);
+              console.log('bookingResult>>>>', bookingResult);
+
+              // Sửa đây: bookingResult đã là data rồi, không cần .data nữa
+              if (!bookingResult || !bookingResult.BookedScheduleId) {
+                Alert.alert("Lỗi", "Không thể tạo booking!");
+                return;
+              }
+
+              // Create payment link - sửa tham số
+              const paymentResult = await createPaymentLink(
+                bookingResult.BookedScheduleId, // Sửa đây
+                depositAmount
+              );
+
+              console.log('paymentResult>>>>', paymentResult);
+
+              if (paymentResult?.paymentUrl) { // Sửa đây
+                Alert.alert(
+                  "Thành công",
+                  "Chuyển đến trang thanh toán...",
+                  [
+                    {
+                      text: "OK",
+                      onPress: () => {
+                        Linking.openURL(paymentResult.paymentUrl); // Sửa đây
+                        router.back();
+                      },
+                    },
+                  ]
+                );
+              } else {
+                Alert.alert(
+                  "Thành công",
+                  "Đặt bàn thành công! Vui lòng thanh toán sau."
+                );
+                router.back();
+              }
+            } catch (error) {
+              console.error('Booking error:', error);
+              Alert.alert("Lỗi", "Có lỗi xảy ra. Vui lòng thử lại!");
+            }
           },
-        ]
-      );
-    } catch (error) {
-      Alert.alert("Lỗi", "Không thể đặt bàn. Vui lòng thử lại!");
-    }
+        },
+      ]
+    );
+  } catch (error) {
+    console.error('handleBookTable error:', error);
+    Alert.alert("Lỗi", "Không thể đặt bàn. Vui lòng thử lại!");
+  }
+};
+
+  const renderTableItem = ({
+    item,
+    index,
+  }: {
+    item: BarTable;
+    index: number;
+  }) => {
+    const isBooked = isTableBooked(item.tableId);
+    const isSelected = selectedTables.some((t) => t.tableId === item.tableId);
+
+    return (
+      <TableCard
+        item={item}
+        index={index}
+        isSelected={isSelected}
+        isBooked={isBooked}
+        onSelect={handleTableSelect}
+      />
+    );
   };
-
-  const renderComboItem = ({ item, index }: { item: ComboItem; index: number }) => (
-    <ComboCard item={item} index={index} />
-  );
 
   if (loadingDetail) {
     return <SkeletonCard />;
@@ -294,9 +466,13 @@ const BarDetail: React.FC<any> = ({}) => {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-      
-      {/* Header with Back Button - Fixed positioning for notch */}
+      <StatusBar
+        barStyle="light-content"
+        translucent
+        backgroundColor="transparent"
+      />
+
+      {/* Header */}
       <SafeAreaView style={styles.headerSafeArea} edges={["top"]}>
         <View style={styles.headerOverlay}>
           <Pressable
@@ -405,7 +581,7 @@ const BarDetail: React.FC<any> = ({}) => {
           </View>
         </Animated.View>
 
-        {/* Combos Section */}
+        {/* Tables Section */}
         <Animated.View
           style={[
             styles.section,
@@ -415,60 +591,79 @@ const BarDetail: React.FC<any> = ({}) => {
           ]}
         >
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Combo đặc biệt</Text>
-            <Ionicons name="flame" size={20} color="#f97316" />
+            <Text style={styles.sectionTitle}>Chọn bàn</Text>
+            <Ionicons name="calendar-outline" size={20} color="#3b82f6" />
           </View>
 
-          {loadingCombo ? (
-            <View style={styles.loadingComboContainer}>
+          {selectedTables.length > 0 && (
+            <View style={styles.selectedInfo}>
+              <Text style={styles.selectedInfoText}>
+                Đã chọn {selectedTables.length} bàn •{" "}
+                {calculateTotalAmount().toLocaleString()}₫
+              </Text>
+            </View>
+          )}
+
+          {loadingTables ? (
+            <View style={styles.loadingTableContainer}>
               <ActivityIndicator size="small" color="#3b82f6" />
             </View>
-          ) : combos.length === 0 ? (
-            <View style={styles.emptyComboContainer}>
-              <Ionicons name="beer-outline" size={48} color="#cbd5e1" />
-              <Text style={styles.emptyComboText}>Chưa có combo nào</Text>
+          ) : !tables || tables.length === 0 ? (
+            <View style={styles.emptyTableContainer}>
+              <Ionicons name="restaurant-outline" size={48} color="#cbd5e1" />
+              <Text style={styles.emptyTableText}>Chưa có bàn nào</Text>
             </View>
           ) : (
             <FlatList
-              data={combos}
-              renderItem={renderComboItem}
-              keyExtractor={(item) => item.comboId}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.comboList}
+              data={tables}
+              renderItem={renderTableItem}
+              keyExtractor={(item) => item.tableId}
+              numColumns={2}
+              columnWrapperStyle={styles.tableRow}
+              contentContainerStyle={styles.tableList}
             />
           )}
         </Animated.View>
 
-        {/* Bottom Spacing */}
         <View style={{ height: 100 }} />
       </ScrollView>
 
       {/* Floating Book Button */}
-      <Animated.View
-        style={[
-          styles.bookingButtonContainer,
-          {
-            transform: [{ scale: buttonScale }],
-          },
-        ]}
-      >
-        <Pressable
-          style={styles.bookingButton}
-          onPress={handleBookingPress}
-          android_ripple={{ color: "rgba(255,255,255,0.3)" }}
+      {selectedTables.length > 0 && (
+        <Animated.View
+          style={[
+            styles.bookingButtonContainer,
+            {
+              transform: [{ scale: buttonScale }],
+            },
+          ]}
         >
-          <LinearGradient
-            colors={["#3b82f6", "#2563eb"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.bookingButtonGradient}
+          <Pressable
+            style={styles.bookingButton}
+            onPress={handleBookingPress}
+            android_ripple={{ color: "rgba(255,255,255,0.3)" }}
+            disabled={loadingBooking}
           >
-            <Ionicons name="calendar" size={24} color="#fff" />
-            <Text style={styles.bookingButtonText}>Đặt bàn ngay</Text>
-          </LinearGradient>
-        </Pressable>
-      </Animated.View>
+            <LinearGradient
+              colors={["#3b82f6", "#2563eb"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.bookingButtonGradient}
+            >
+              {loadingBooking ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="calendar" size={24} color="#fff" />
+                  <Text style={styles.bookingButtonText}>
+                    Đặt bàn ({selectedTables.length})
+                  </Text>
+                </>
+              )}
+            </LinearGradient>
+          </Pressable>
+        </Animated.View>
+      )}
     </View>
   );
 };
@@ -479,18 +674,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f8fafc",
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#f8fafc",
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: "#64748b",
-    fontWeight: "500",
   },
   emptyContainer: {
     flex: 1,
@@ -661,39 +844,72 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: "#0f172a",
   },
-  loadingComboContainer: {
+  selectedInfo: {
+    backgroundColor: "#eff6ff",
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#3b82f6",
+  },
+  selectedInfoText: {
+    fontSize: 14,
+    color: "#1e40af",
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  loadingTableContainer: {
     paddingVertical: 40,
     alignItems: "center",
   },
-  emptyComboContainer: {
+  emptyTableContainer: {
     paddingVertical: 40,
     alignItems: "center",
   },
-  emptyComboText: {
+  emptyTableText: {
     fontSize: 15,
     color: "#94a3b8",
     marginTop: 12,
     fontWeight: "500",
   },
-  comboList: {
+  tableList: {
     paddingVertical: 8,
   },
-  comboCard: {
-    backgroundColor: "#fff",
-    padding: 18,
-    marginRight: 14,
-    borderRadius: 20,
-    width: 220,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 12,
-    elevation: 5,
+  tableRow: {
+    justifyContent: "space-between",
+    marginBottom: 14,
   },
-  comboHeader: {
+  tableCard: {
+    backgroundColor: "#fff",
+    padding: 16,
+    borderRadius: 16,
+    width: (width - 48) / 2,
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 8,
+    elevation: 4,
+    borderWidth: 2,
+    borderColor: "transparent",
+  },
+  tableCardBooked: {
+    backgroundColor: "#f1f5f9",
+    opacity: 0.6,
+  },
+  tableCardSelected: {
+    borderColor: "#3b82f6",
+    backgroundColor: "#eff6ff",
+  },
+  tableCardPressable: {
+    flex: 1,
+  },
+  tableHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 12,
   },
-  comboIconContainer: {
+  tableIconContainer: {
     width: 48,
     height: 48,
     borderRadius: 24,
@@ -701,32 +917,74 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  comboName: {
+  tableIconBooked: {
+    backgroundColor: "#f1f5f9",
+  },
+  tableIconSelected: {
+    backgroundColor: "#3b82f6",
+  },
+  selectedBadge: {
+    position: "absolute",
+    right: 0,
+    top: 0,
+  },
+  tableName: {
     fontSize: 17,
     fontWeight: "700",
     color: "#0f172a",
-    marginBottom: 8,
-    lineHeight: 22,
+    marginBottom: 6,
   },
-  comboPrice: {
-    fontSize: 18,
+  tableTypeContainer: {
+    marginBottom: 8,
+  },
+  tableType: {
+    fontSize: 12,
+    color: "#64748b",
+    fontWeight: "500",
+    fontStyle: "italic",
+  },
+  tableNameBooked: {
+    color: "#94a3b8",
+  },
+  tableNameSelected: {
+    color: "#1e40af",
+  },
+  tableInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+    gap: 6,
+  },
+  tableCapacity: {
+    fontSize: 13,
+    color: "#64748b",
+    fontWeight: "500",
+  },
+  tableTextBooked: {
+    color: "#94a3b8",
+  },
+  tablePrice: {
+    fontSize: 16,
     fontWeight: "800",
     color: "#3b82f6",
   },
-  voucherBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 10,
+  tablePriceBooked: {
+    color: "#94a3b8",
+  },
+  tablePriceSelected: {
+    color: "#1e40af",
+  },
+  bookedBadge: {
+    marginTop: 8,
     paddingHorizontal: 10,
-    paddingVertical: 6,
-    backgroundColor: "#f97316",
-    borderRadius: 12,
+    paddingVertical: 4,
+    backgroundColor: "#94a3b8",
+    borderRadius: 8,
     alignSelf: "flex-start",
   },
-  voucherText: {
-    fontSize: 12,
+  bookedText: {
+    fontSize: 11,
     color: "#fff",
-    marginLeft: 4,
     fontWeight: "600",
   },
   bookingButtonContainer: {
@@ -793,15 +1051,16 @@ const styles = StyleSheet.create({
     backgroundColor: "#e2e8f0",
     borderRadius: 12,
   },
-  skeletonComboList: {
+  skeletonTableList: {
     flexDirection: "row",
+    flexWrap: "wrap",
     marginTop: 16,
     gap: 14,
   },
-  skeletonCombo: {
-    width: 220,
-    height: 180,
+  skeletonTable: {
+    width: (width - 48) / 2,
+    height: 160,
     backgroundColor: "#e2e8f0",
-    borderRadius: 20,
+    borderRadius: 16,
   },
 });

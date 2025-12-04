@@ -1,8 +1,14 @@
 import {
     BarDetailResponse,
     BarListResponse,
-    ComboListResponse,
 } from "@/types/barType";
+import {
+    BookingListResponse,
+    CreateBookingRequest,
+    CreateBookingResponse,
+    PaymentResponse,
+    TableListResponse
+} from "@/types/tableType";
 import { API_CONFIG } from "./apiConfig";
 
 interface ApiResponse<T> {
@@ -50,6 +56,7 @@ export class BarApiService {
         }
     }
 
+    // Bar APIs
     async getBars(page: number = 1, limit: number = 10): Promise<ApiResponse<BarListResponse>> {
         return this.makeRequest<BarListResponse>(`/bar?page=${page}&limit=${limit}`);
     }
@@ -58,8 +65,49 @@ export class BarApiService {
         return this.makeRequest<BarDetailResponse>(`/bar/${barId}`);
     }
 
-    async getBarCombos(barId: string): Promise<ApiResponse<ComboListResponse>> {
-        return this.makeRequest<ComboListResponse>(`/combo/bar/${barId}`);
+    // Table APIs
+    async getBarTables(barId: string): Promise<ApiResponse<TableListResponse>> {
+        return this.makeRequest<TableListResponse>(`/bar-table/bar/${barId}`);
     }
 
+    async getBookedTables(
+        entityAccountId: string,
+        date: string
+    ): Promise<ApiResponse<BookingListResponse>> {
+        return this.makeRequest<BookingListResponse>(
+            `/bookingtable/receiver/${entityAccountId}?date=${date}`
+        );
+    }
+
+    // Booking APIs
+    async createBooking(
+        bookingData: CreateBookingRequest
+    ): Promise<ApiResponse<CreateBookingResponse>> {
+        return this.makeRequest<CreateBookingResponse>(`/bookingtable`, {
+            method: "POST",
+            body: JSON.stringify(bookingData),
+        });
+    }
+
+    async createPaymentLink(
+        bookedScheduleId: string,
+        depositAmount: number
+    ): Promise<ApiResponse<PaymentResponse>> {
+        return this.makeRequest<PaymentResponse>(
+            `/bookingtable/${bookedScheduleId}/create-payment`,
+            {
+                method: "POST",
+                body: JSON.stringify({ depositAmount }),
+            }
+        );
+    }
+
+    async cancelBooking(bookedScheduleId: string): Promise<ApiResponse<any>> {
+        return this.makeRequest<any>(
+            `/bookingtable/${bookedScheduleId}/cancel`,
+            {
+                method: "PATCH",
+            }
+        );
+    }
 }
