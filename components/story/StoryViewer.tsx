@@ -139,7 +139,7 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
 
   // Kiểm tra xem story có ảnh không
   const hasImage = currentStory?.images || 
-    (currentStory?.mediaIds && currentStory.mediaIds.length > 0 && currentStory.mediaIds[0].url);
+    (currentStory?.mediaIds && currentStory.mediaIds.length > 0 && currentStory.mediaIds[0].url);    
 
   useEffect(() => {
     if (visible && currentStory) {
@@ -383,14 +383,14 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
           </View>
 
           <View style={styles.headerActions}>
-            {isOwner && onDelete && (
+            {/* {isOwner && onDelete && (
               <TouchableOpacity
                 style={styles.headerButton}
                 onPress={handleDelete}
               >
                 <Ionicons name="trash-outline" size={24} color="#fff" />
               </TouchableOpacity>
-            )}
+            )} */}
             
             <TouchableOpacity style={styles.headerButton} onPress={onClose}>
               <Ionicons name="close" size={28} color="#fff" />
