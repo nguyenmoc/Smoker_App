@@ -83,11 +83,12 @@ export interface PostData {
   authorEntityAccountId: string;
 
   //infoUserOld
-    music?: any;
+  music?: any;
 
   // Likes & comments
   likes: Record<string, Like>;
   comments: Record<string, Comment>;
+  originalPost?: PostData;
 }
 
 export interface CreatePostData {
