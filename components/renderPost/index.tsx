@@ -194,8 +194,8 @@ export default function Index({item, currentId, token, onAction}: RenderPostProp
                             onAction(data)
                         }}
                     >
-                        <Ionicons name="share-outline" size={18} color="#6b7280"/>
-                        <Text style={styles.actionText}>Chia sẻ</Text>
+                        <Ionicons name="repeat-outline" size={18} color="#6b7280"/>
+                        <Text style={styles.actionText}>Đăng lại</Text>
                     </TouchableOpacity>
                 </View>
             </TouchableOpacity>

@@ -1,7 +1,7 @@
 import {ProfileHeader} from '@/components/ProfileHeader';
 import RenderPost from "@/components/renderPost";
 import {SidebarMenu} from '@/components/SidebarMenu';
-import {fieldLabels, mockPosts} from '@/constants/profileData';
+import {fieldLabels} from '@/constants/profileData';
 import {useAuth} from '@/hooks/useAuth';
 import {useProfile} from '@/hooks/useProfile';
 import {Ionicons} from '@expo/vector-icons';
@@ -27,7 +27,7 @@ import {
     View
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import ShareModal from "@/components/sharePost";
+import {FeedApiService} from "@/services/feedApi";
 
 const {width: screenWidth} = Dimensions.get('window');
 const PHOTO_SIZE = (screenWidth - 4) / 3;
@@ -35,10 +35,10 @@ const PHOTO_SIZE = (screenWidth - 4) / 3;
 const getAllPhotos = (posts: any[]) => {
     const photos: any[] = [];
     posts.forEach((post) => {
-        post.images.forEach((image: string) => {
+        post.mediaIds.forEach((image: any) => {
             photos.push({
                 id: `${post.id}-${image}`,
-                uri: image,
+                uri: image.url,
                 postId: post.id,
             });
         });
@@ -64,6 +64,8 @@ export default function ProfileScreen() {
     const {
         profile,
         posts,
+        followers,
+        following,
         loading,
         error,
         fetchProfile,
@@ -78,16 +80,14 @@ export default function ProfileScreen() {
     const [imageLoading, setImageLoading] = useState<'avatar' | 'coverImage' | null>(null);
     const [activeTab, setActiveTab] = useState<TabType>('info');
     const [menuVisible, setMenuVisible] = useState(false);
-    const [currentAccountId, setCurrentAccountId] = useState('1');
 
     const scrollY = useRef(new Animated.Value(0)).current;
     const menuAnimation = useRef(new Animated.Value(-320)).current;
     const [refreshing, setRefreshing] = useState(false);
 
-    const allPhotos = getAllPhotos(mockPosts);
+    const allPhotos = getAllPhotos(posts);
     const accountId = authState.EntityAccountId;
-    const [showModal, setShowModal] = useState(false);
-    const [dataModal, setDataModal] = useState<any>();
+    const feedApi = new FeedApiService(authState.token!)
 
     const onRefresh = useCallback(async () => {
         setRefreshing(true);
@@ -290,9 +290,39 @@ export default function ProfileScreen() {
             </View>
         );
     }
-    const showDataModal = (value: any) => {
-        setDataModal(value);
-        setShowModal(true)
+    const showDataModal = async (item: any) => {
+        try {
+            let request = {
+                title: item.title,
+                content: item.content,
+                images: item.images,
+                videos: item.videos,
+                audios: "",
+                musicTitle: "",
+                artistName: "",
+                description: "",
+                hashTag: "",
+                musicPurchaseLink: "",
+                musicBackgroundImage: "",
+                type: item.type,
+                songId: item.songId,
+                musicId: item.musicId,
+                entityAccountId: accountId,
+                entityId: item.entityId,
+                entityType: item.entityType,
+                repostedFromId: item._id,
+                repostedFromType: item.type
+            }
+            const response = await feedApi.rePost(request);
+            if (response.success) {
+                Alert.alert('Thành công', 'Đã đăng lại bài viết');
+            } else {
+                Alert.alert('Lỗi', 'Không đăng lại bài viết');
+            }
+        } catch (error) {
+            console.log("error repost: ", error);
+            Alert.alert('Lỗi', 'Không đăng lại bài viết');
+        }
     }
     return (
         <View style={styles.container}>
@@ -339,7 +369,9 @@ export default function ProfileScreen() {
                         profile={profile}
                         imageLoading={imageLoading}
                         activeTab={activeTab}
-                        postsCount={mockPosts.length}
+                        postsCount={posts.length}
+                        followingCount={following.length}
+                        followerCount={followers.length}
                         onPickImage={pickImage}
                         onTabChange={setActiveTab}
                         onFollowersPress={handleFollowersPress}
@@ -365,7 +397,9 @@ export default function ProfileScreen() {
                             profile={profile}
                             imageLoading={imageLoading}
                             activeTab={activeTab}
-                            postsCount={mockPosts.length}
+                            postsCount={posts.length}
+                            followingCount={following.length}
+                            followerCount={followers.length}
                             onPickImage={pickImage}
                             onTabChange={setActiveTab}
                             onFollowersPress={handleFollowersPress}
@@ -405,7 +439,9 @@ export default function ProfileScreen() {
                             profile={profile}
                             imageLoading={imageLoading}
                             activeTab={activeTab}
-                            postsCount={mockPosts.length}
+                            postsCount={posts.length}
+                            followingCount={following.length}
+                            followerCount={followers.length}
                             onPickImage={pickImage}
                             onTabChange={setActiveTab}
                             onFollowersPress={handleFollowersPress}
@@ -426,6 +462,12 @@ export default function ProfileScreen() {
                         useNativeDriver: true,
                     })}
                     scrollEventThrottle={16}
+                    ListEmptyComponent={
+                        <View style={styles.emptyContainer}>
+                            <Ionicons name="images-outline" size={48} color="#d1d5db"/>
+                            <Text style={styles.emptyText}>Chưa có hình ảnh nào</Text>
+                        </View>
+                    }
                 />
             )}
 
@@ -468,12 +510,6 @@ export default function ProfileScreen() {
                     </View>
                 </KeyboardAvoidingView>
             </Modal>
-
-            <ShareModal
-                value={dataModal}
-                visible={showModal}
-                onClose={() => setShowModal(false)}
-            />
         </View>
     );
 }

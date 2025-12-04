@@ -19,7 +19,7 @@ import {
     View,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
-import ShareModal from "@/components/sharePost";
+import {FeedApiService} from "@/services/feedApi";
 
 const {width: screenWidth} = Dimensions.get('window');
 const imageSize = (screenWidth - 32 - 8) / 3;
@@ -28,12 +28,10 @@ export default function User() {
     const router = useRouter();
     const {id} = useLocalSearchParams<{ id: string }>();
     const {authState} = useAuth();
-    const {user, posts, loading, followUser, unFollowUser} = useUserProfile(id!);
+    const {user, posts, followers, following, loading, followUser, unFollowUser} = useUserProfile(id!);
     const scrollY = useRef(new Animated.Value(0)).current;
     const AnimatedFlatList = Animated.createAnimatedComponent(FlatList);
-
-    const [showModal, setShowModal] = useState(false);
-    const [dataModal, setDataModal] = useState<any>();
+    const feedApi = new FeedApiService(authState.token!);
 
     const accountId = authState.EntityAccountId;
 
@@ -184,15 +182,15 @@ export default function User() {
 
                 <View style={styles.statsContainer}>
                     <View style={styles.statItem}>
-                        <Text style={styles.statNumber}>{formatNumber(user?.posts || 0)}</Text>
+                        <Text style={styles.statNumber}>{formatNumber(posts.length || 0)}</Text>
                         <Text style={styles.statLabel}>Bài viết</Text>
                     </View>
                     <View style={styles.statItem}>
-                        <Text style={styles.statNumber}>{formatNumber(user?.followers || 0)}</Text>
+                        <Text style={styles.statNumber}>{formatNumber(followers.length || 0)}</Text>
                         <Text style={styles.statLabel}>Người theo dõi</Text>
                     </View>
                     <View style={styles.statItem}>
-                        <Text style={styles.statNumber}>{formatNumber(user?.following || 0)}</Text>
+                        <Text style={styles.statNumber}>{formatNumber(following.length || 0)}</Text>
                         <Text style={styles.statLabel}>Đang theo dõi</Text>
                     </View>
                 </View>
@@ -280,9 +278,39 @@ export default function User() {
         );
     }
 
-    const showDataModal = (value: any) => {
-        setDataModal(value);
-        setShowModal(true)
+    const showDataModal = async (item: any) => {
+        try {
+            let request = {
+                title: item.title,
+                content: item.content,
+                images: item.images,
+                videos: item.videos,
+                audios: "",
+                musicTitle: "",
+                artistName: "",
+                description: "",
+                hashTag: "",
+                musicPurchaseLink: "",
+                musicBackgroundImage: "",
+                type: item.type,
+                songId: item.songId,
+                musicId: item.musicId,
+                entityAccountId: accountId,
+                entityId: item.entityId,
+                entityType: item.entityType,
+                repostedFromId: item._id,
+                repostedFromType: item.type
+            }
+            const response = await feedApi.rePost(request);
+            if (response.success) {
+                Alert.alert('Thành công', 'Đã đăng lại bài viết');
+            } else {
+                Alert.alert('Lỗi', 'Không đăng lại bài viết');
+            }
+        } catch (error) {
+            console.log("error repost: ", error);
+            Alert.alert('Lỗi', 'Không đăng lại bài viết');
+        }
     }
 
     return (
@@ -300,7 +328,8 @@ export default function User() {
 
             <AnimatedFlatList
                 data={posts}
-                renderItem={({item}) => <RenderPost item={item} currentId={authState.currentId} token={authState.token} onAction={showDataModal}/>}
+                renderItem={({item}) => <RenderPost item={item} currentId={authState.currentId} token={authState.token}
+                                                    onAction={showDataModal}/>}
                 keyExtractor={(item: any) => item._id}
                 ListHeaderComponent={renderHeader}
                 showsVerticalScrollIndicator={false}
@@ -319,11 +348,6 @@ export default function User() {
                         </Text>
                     </View>
                 }
-            />
-            <ShareModal
-                value={dataModal}
-                visible={showModal}
-                onClose={() => setShowModal(false)}
             />
         </View>
     );

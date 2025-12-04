@@ -13,7 +13,8 @@ export const useProfile = () => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
+    const [followers, setFollowers] = useState<any[]>([]);
+    const [following, setFollowing] = useState<any[]>([]);
   const { authState, updateAuthState } = useAuth();
   const token = authState.token;
   const profileApi = new ProfileApiService(token!!);
@@ -23,12 +24,24 @@ export const useProfile = () => {
     if (!token) return;
 
 
-    setLoading(true);
+      setLoading(true);
     setError(null);
 
     try {
-      const response = await profileApi.getUserProfile(authState.EntityAccountId!!);
-      const postsResponse = await feedApi.getUserPosts(authState.EntityAccountId!)
+        const userId = authState.EntityAccountId!;
+        const [postsResponse, followersResponse, followingResponse] = await Promise.all([
+            feedApi.getUserPosts(userId),
+            feedApi.getFollowers(userId),
+            feedApi.getFollowing(userId)
+        ]);
+        if (followingResponse?.data) {
+            setFollowing(followingResponse.data);
+        }
+        if (followersResponse?.data) {
+            setFollowers(followersResponse.data);
+        }
+      const response = await profileApi.getUserProfile(userId);
+
       if (response.data) {
         const data = response.data;
 
@@ -155,6 +168,8 @@ export const useProfile = () => {
   return {
     profile,
     posts,
+      followers,
+      following,
     loading,
     error,
     fetchProfile,

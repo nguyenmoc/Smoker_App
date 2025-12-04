@@ -23,6 +23,7 @@ import { PostContent } from '@/components/post/PostContent';
 import { PostMenu } from '@/components/post/PostMenu';
 import { useAuth } from '@/hooks/useAuth';
 import { usePostDetails } from '@/hooks/usePost';
+import {FeedApiService} from "@/services/feedApi";
 
 // Skeleton Loading Component
 const SkeletonLoader = () => {
@@ -124,6 +125,7 @@ export default function PostDetailScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const moreButtonRef = useRef<View>(null);
   const scaleAnim = useRef(new Animated.Value(0)).current;
+const feedApi = new FeedApiService(authState.token!);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -156,22 +158,41 @@ export default function PostDetailScreen() {
     }
   };
 
-  const handleShare = async () => {
-    if (!post) return;
+  const handleShare = async (item: any) => {
+    if (!item) return;
 
-    try {
-      const result = await Share.share({
-        message: `${post.content}\n\nXem thêm tại Smoker App`,
-        title: 'Chia sẻ bài viết',
-        url: `https://smoker.app/post/${post._id}`,
-      });
-
-      if (result.action === Share.sharedAction) {
-        Alert.alert('Thành công', 'Đã chia sẻ bài viết');
+      try {
+          let request = {
+              title: item.title,
+              content: item.content,
+              images: item.images,
+              videos: item.videos,
+              audios: "",
+              musicTitle: "",
+              artistName: "",
+              description: "",
+              hashTag: "",
+              musicPurchaseLink: "",
+              musicBackgroundImage: "",
+              type: item.type,
+              songId: item.songId,
+              musicId: item.musicId,
+              entityAccountId: authState.EntityAccountId,
+              entityId: item.entityId,
+              entityType: item.entityType,
+              repostedFromId: item._id,
+              repostedFromType: item.type
+          }
+          const response = await feedApi.rePost(request);
+          if (response.success) {
+              Alert.alert('Thành công', 'Đã đăng lại bài viết');
+          } else {
+              Alert.alert('Lỗi', 'Không đăng lại bài viết');
+          }
+      } catch (error) {
+          console.log("error repost: ", error);
+          Alert.alert('Lỗi', 'Không đăng lại bài viết');
       }
-    } catch (error) {
-      Alert.alert('Lỗi', 'Không thể chia sẻ bài viết');
-    }
   };
 
   const handleUserPress = (userId: string) => {

@@ -32,7 +32,7 @@ import {
     View
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
-import ShareModal from "@/components/sharePost";
+import {FeedApiService} from "@/services/feedApi";
 
 const {width: screenWidth} = Dimensions.get('window');
 
@@ -85,7 +85,7 @@ export default function HomeScreen() {
     const avartarAuthor = authState.avatar;
     const entityAccountId = authState.EntityAccountId;
     const currentUserName = authState.userEmail || 'Bạn';
-    const [openActionModal, setOpenActionModal] = useState(false);
+    const feedApi = new FeedApiService(authState.token!);
 
     const {socket} = useSocket();
 
@@ -339,6 +339,40 @@ export default function HomeScreen() {
         const videoMedias = mediaItems.filter(m => m.type === 'video');
         const hasMedia = mediaItems.length > 0;
 
+        const handleRepost = async () => {
+            try {
+                let request = {
+                    title: item.title,
+                    content: item.content,
+                    images: item.images,
+                    videos: item.videos,
+                    audios: "",
+                    musicTitle: "",
+                    artistName: "",
+                    description: "",
+                    hashTag: "",
+                    musicPurchaseLink: "",
+                    musicBackgroundImage: "",
+                    type: item.type,
+                    songId: item.songId,
+                    musicId: item.musicId,
+                    entityAccountId: entityAccountId,
+                    entityId: item.entityId,
+                    entityType: item.entityType,
+                    repostedFromId: item._id,
+                    repostedFromType: item.type
+                }
+                const response = await feedApi.rePost(request);
+                if (response.success) {
+                    Alert.alert('Thành công', 'Đã đăng lại bài viết');
+                } else {
+                    Alert.alert('Lỗi', 'Không đăng lại bài viết');
+                }
+            } catch (error) {
+                console.log("error repost: ", error);
+                Alert.alert('Lỗi', 'Không đăng lại bài viết');
+            }
+        };
         return (
             <View style={styles.card}>
                 <View style={styles.cardHeader}>
@@ -437,18 +471,11 @@ export default function HomeScreen() {
 
                     <TouchableOpacity
                         style={styles.actionBtn}
-                        onPress={() => {
-                            setOpenActionModal(true)
-                        }}
+                        onPress={handleRepost}
                     >
-                        <Ionicons name="share-outline" size={18} color="#6b7280"/>
-                        <Text style={styles.actionText}>Chia sẻ</Text>
+                        <Ionicons name="repeat-outline" size={18} color="#6b7280"/>
+                        <Text style={styles.actionText}>Đăng lại</Text>
                     </TouchableOpacity>
-                    <ShareModal
-                        value={item}
-                        visible={openActionModal}
-                        onClose={() => setOpenActionModal(false)}
-                    />
                 </View>
             </View>
         );
