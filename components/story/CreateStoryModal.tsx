@@ -30,13 +30,13 @@ interface CreateStoryModalProps {
 }
 
 export const CreateStoryModal: React.FC<CreateStoryModalProps> = ({
-                                                                      visible,
-                                                                      uploading,
-                                                                      uploadProgress,
-                                                                      currentUserAvatar,
-                                                                      onClose,
-                                                                      onSubmit,
-                                                                  }) => {
+    visible,
+    uploading,
+    uploadProgress,
+    currentUserAvatar,
+    onClose,
+    onSubmit,
+}) => {
     const [content, setContent] = useState('');
     const [selectedImage, setSelectedImage] = useState<{
         uri: string;
@@ -44,7 +44,7 @@ export const CreateStoryModal: React.FC<CreateStoryModalProps> = ({
         name: string;
     } | null>(null);
     const [keyboardVisible, setKeyboardVisible] = useState(false);
-    const {authState} = useAuth();
+    const { authState } = useAuth();
 
     useEffect(() => {
         const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => {
@@ -99,8 +99,12 @@ export const CreateStoryModal: React.FC<CreateStoryModalProps> = ({
             }
         ];
 
-        const feedApi = await (new FeedApiService(authState.token!).uploadPostMedia(files))
-        const imageUrl = feedApi.data[0].url;
+        let imageUrl;
+        if (selectedImage) {
+            const feedApi = await (new FeedApiService(authState.token!).uploadPostMedia(files))
+            imageUrl = feedApi.data[0].url;
+        }
+
         const now = new Date();
         const next24h = (new Date(now.getTime() + 24 * 60 * 60 * 1000)).toISOString().replace("Z", "+00:00");
         const storyData: CreateStoryData = {
@@ -140,7 +144,7 @@ export const CreateStoryModal: React.FC<CreateStoryModalProps> = ({
                         <View style={styles.modalHeader}>
                             <Text style={styles.modalTitle}>Tạo Story</Text>
                             <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-                                <Ionicons name="close" size={24} color="#6b7280"/>
+                                <Ionicons name="close" size={24} color="#6b7280" />
                             </TouchableOpacity>
                         </View>
 
@@ -152,7 +156,7 @@ export const CreateStoryModal: React.FC<CreateStoryModalProps> = ({
                             {/* User Info */}
                             <View style={styles.userInfo}>
                                 <Image
-                                    source={{uri: currentUserAvatar || 'https://i.pravatar.cc/100?img=10'}}
+                                    source={{ uri: currentUserAvatar || 'https://i.pravatar.cc/100?img=10' }}
                                     style={styles.avatar}
                                 />
                                 <Text style={styles.username}>Story của bạn</Text>
@@ -162,17 +166,17 @@ export const CreateStoryModal: React.FC<CreateStoryModalProps> = ({
                             {selectedImage ? (
                                 <View style={styles.imagePreviewContainer}>
                                     <Image
-                                        source={{uri: selectedImage.uri}}
+                                        source={{ uri: selectedImage.uri }}
                                         style={styles.imagePreview}
                                         resizeMode="cover"
                                     />
                                     <TouchableOpacity style={styles.removeImageButton} onPress={removeImage}>
-                                        <Ionicons name="close-circle" size={32} color="#ef4444"/>
+                                        <Ionicons name="close-circle" size={32} color="#ef4444" />
                                     </TouchableOpacity>
                                 </View>
                             ) : (
                                 <TouchableOpacity style={styles.addImageButton} onPress={pickImage}>
-                                    <Ionicons name="image-outline" size={48} color="#2563eb"/>
+                                    <Ionicons name="image-outline" size={48} color="#2563eb" />
                                     <Text style={styles.addImageText}>Thêm ảnh</Text>
                                 </TouchableOpacity>
                             )}
@@ -190,7 +194,7 @@ export const CreateStoryModal: React.FC<CreateStoryModalProps> = ({
 
                             {/* Tips */}
                             <View style={styles.tipsContainer}>
-                                <Ionicons name="information-circle-outline" size={20} color="#6b7280"/>
+                                <Ionicons name="information-circle-outline" size={20} color="#6b7280" />
                                 <Text style={styles.tipsText}>Story sẽ tự động xóa sau 24 giờ</Text>
                             </View>
                         </ScrollView>
@@ -199,7 +203,7 @@ export const CreateStoryModal: React.FC<CreateStoryModalProps> = ({
                         <View style={styles.footer}>
                             {uploading ? (
                                 <View style={styles.uploadingContainer}>
-                                    <ActivityIndicator size="small" color="#2563eb"/>
+                                    <ActivityIndicator size="small" color="#2563eb" />
                                     <Text style={styles.uploadingText}>Đang đăng... {uploadProgress}%</Text>
                                 </View>
                             ) : (

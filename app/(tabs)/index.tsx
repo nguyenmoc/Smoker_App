@@ -1,19 +1,20 @@
-import {CreateStoryModal} from '@/components/story/CreateStoryModal';
-import {StoryList} from '@/components/story/StoryList';
-import {StoryViewer} from '@/components/story/StoryViewer';
+import { CreateStoryModal } from '@/components/story/CreateStoryModal';
+import { StoryList } from '@/components/story/StoryList';
+import { StoryViewer } from '@/components/story/StoryViewer';
 import AnimatedHeader from '@/components/ui/AnimatedHeader';
-import {useAuth} from '@/hooks/useAuth';
-import {useFeed} from '@/hooks/useFeed';
-import {useSocket} from '@/hooks/useSocket';
-import {useStory} from '@/hooks/useStory';
-import {MessageApiService} from '@/services/messageApi';
-import {PostData} from '@/types/postType';
-import {StoryData} from '@/types/storyType';
-import {Ionicons} from '@expo/vector-icons';
-import {ResizeMode, Video} from 'expo-av';
+import { useAuth } from '@/hooks/useAuth';
+import { useFeed } from '@/hooks/useFeed';
+import { useSocket } from '@/hooks/useSocket';
+import { useStory } from '@/hooks/useStory';
+import { FeedApiService } from "@/services/feedApi";
+import { MessageApiService } from '@/services/messageApi';
+import { PostData } from '@/types/postType';
+import { StoryData } from '@/types/storyType';
+import { Ionicons } from '@expo/vector-icons';
+import { ResizeMode, Video } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
-import {useRouter} from 'expo-router';
-import React, {useCallback, useEffect, useRef, useState} from 'react';
+import { useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -23,7 +24,6 @@ import {
     Modal,
     RefreshControl,
     ScrollView,
-    Share,
     StatusBar,
     StyleSheet,
     Text,
@@ -31,8 +31,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
-import {FeedApiService} from "@/services/feedApi";
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const {width: screenWidth} = Dimensions.get('window');
 
@@ -144,6 +143,7 @@ export default function HomeScreen() {
     const [storyViewerVisible, setStoryViewerVisible] = useState(false);
     const [currentStoryIndex, setCurrentStoryIndex] = useState(0);
     const [createStoryModalVisible, setCreateStoryModalVisible] = useState(false);
+    const [selectedStoryId, setSelectedStoryId] = useState<string | undefined>(undefined);
 
     const {
         posts,
@@ -260,8 +260,14 @@ export default function HomeScreen() {
 
     // Story handlers
     const handleStoryPress = useCallback((story: StoryData, index: number) => {
+        setSelectedStoryId(story._id);
         setCurrentStoryIndex(index);
         setStoryViewerVisible(true);
+    }, []);
+
+    const handleCloseStoryViewer = useCallback(() => {
+        setStoryViewerVisible(false);
+        setSelectedStoryId(undefined);
     }, []);
 
     const handleCreateStory = useCallback(() => {
@@ -665,11 +671,13 @@ export default function HomeScreen() {
                 visible={storyViewerVisible}
                 stories={stories}
                 initialIndex={currentStoryIndex}
+                initialStoryId={selectedStoryId} 
                 currentUserEntityAccountId={entityAccountId}
                 onClose={() => setStoryViewerVisible(false)}
                 onLike={likeStory}
                 onMarkAsViewed={markAsViewed}
                 onDelete={deleteStory}
+                onClose={handleCloseStoryViewer}
             />
 
             {/* Create Story Modal */}
