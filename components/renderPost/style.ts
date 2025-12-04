@@ -275,5 +275,8 @@ export const styles = StyleSheet.create({
         marginHorizontal: 8,
         marginVertical: 8,
     },
+    boxCard: {
+        marginHorizontal: 8,
+    },
 
 });

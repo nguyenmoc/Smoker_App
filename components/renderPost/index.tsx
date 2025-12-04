@@ -135,26 +135,26 @@ export function Index({item, currentId, feedApi, entityAccountId, isDisable = fa
                 {
                     data.repostedFromId ? (
                         <TouchableOpacity
-                            onPress={() => handlePostPress(data.music?._id)}
+                            onPress={() => handlePostPress(data.originalPost?._id)}
                             onStartShouldSetResponder={() => true}
                         >
                             <View style={styles.repostCard}>
                                 <View style={styles.cardHeader}>
                                     <TouchableOpacity
-                                        onPress={() => handleUserPress(data.music?.entityAccountId)}
+                                        onPress={() => handleUserPress(data.originalPost?.entityAccountId)}
                                         onStartShouldSetResponder={() => true}
                                     >
-                                        <Image source={{uri: data.music?.uploaderAvatar}} style={styles.avatar}/>
+                                        <Image source={{uri: data.originalPost?.authorAvatar}} style={styles.avatar}/>
                                     </TouchableOpacity>
                                     <View style={styles.headerInfo}>
                                         <TouchableOpacity
-                                            onPress={() => handleUserPress(data.music?.entityAccountId)}
+                                            onPress={() => handleUserPress(data.originalPost?.entityAccountId)}
                                             onStartShouldSetResponder={() => true}
                                         >
-                                            <Text style={styles.username}>{data.music?.uploaderName}</Text>
+                                            <Text style={styles.username}>{data.originalPost?.authorName}</Text>
                                         </TouchableOpacity>
                                         <Text style={styles.subText}>
-                                            {formatTime(data.music?.updatedAt)}
+                                            {formatTime(data.originalPost?.createdAt)}
                                         </Text>
                                     </View>
                                 </View>
@@ -165,8 +165,10 @@ export function Index({item, currentId, feedApi, entityAccountId, isDisable = fa
                             </View>
                         </TouchableOpacity>
                     ) : (<>
-                        <Text style={styles.content}>{data.content}</Text>
-                        <ShowMedia item={item}/>
+                        <View  style={styles.boxCard}>
+                            <Text style={styles.content}>{data.content}</Text>
+                            <ShowMedia item={item}/>
+                        </View>
                     </>)
                 }
 
