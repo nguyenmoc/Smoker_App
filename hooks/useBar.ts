@@ -101,7 +101,6 @@ export const useBar = () => {
 
       try {
         const response = await barApi.getBarTables(barId);
-        console.log('table>>>>', response);
 
         if (response.data) {
           const mappedTables = mapBarTableList(response.data);

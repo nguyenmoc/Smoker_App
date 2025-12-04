@@ -1,17 +1,15 @@
 import { useBar } from "@/hooks/useBar";
 import { BarTable } from "@/types/tableType";
 import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Animated,
   Dimensions,
-  FlatList,
   Image,
-  Linking,
   Pressable,
   ScrollView,
   StatusBar,
@@ -22,37 +20,15 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const { width } = Dimensions.get("window");
+const CARD_WIDTH = (width - 48) / 2;
 
-// Table Card Component
+// Simple Table Card Component
 const TableCard: React.FC<{
   item: BarTable;
-  index: number;
   isSelected: boolean;
   isBooked: boolean;
   onSelect: (table: BarTable) => void;
-}> = ({ item, index, isSelected, isBooked, onSelect }) => {
-  const animValue = useRef(new Animated.Value(0)).current;
-  const scaleValue = useRef(new Animated.Value(1)).current;
-
-  useEffect(() => {
-    Animated.spring(animValue, {
-      toValue: 1,
-      delay: index * 100,
-      tension: 50,
-      friction: 7,
-      useNativeDriver: true,
-    }).start();
-  }, []);
-
-  useEffect(() => {
-    Animated.spring(scaleValue, {
-      toValue: isSelected ? 1.05 : 1,
-      tension: 50,
-      friction: 7,
-      useNativeDriver: true,
-    }).start();
-  }, [isSelected]);
-
+}> = ({ item, isSelected, isBooked, onSelect }) => {
   const handlePress = () => {
     if (!isBooked) {
       onSelect(item);
@@ -60,52 +36,46 @@ const TableCard: React.FC<{
   };
 
   return (
-    <Animated.View
+    <Pressable
+      onPress={handlePress}
+      disabled={isBooked}
       style={[
         styles.tableCard,
         isBooked && styles.tableCardBooked,
         isSelected && styles.tableCardSelected,
-        { borderColor: item.color || 'transparent' },
-        {
-          opacity: animValue,
-          transform: [
-            {
-              translateY: animValue.interpolate({
-                inputRange: [0, 1],
-                outputRange: [20, 0],
-              }),
-            },
-            { scale: scaleValue },
-          ],
-        },
+        { borderColor: isSelected ? item.color : "transparent" },
       ]}
     >
-      <Pressable
-        onPress={handlePress}
-        disabled={isBooked}
-        style={styles.tableCardPressable}
-      >
-        <View style={styles.tableHeader}>
-          <View
-            style={[
-              styles.tableIconContainer,
-              isBooked && styles.tableIconBooked,
-              isSelected && styles.tableIconSelected,
-              { backgroundColor: isSelected ? item.color : `${item.color}20` },
-            ]}
-          >
-            <Ionicons
-              name={isBooked ? "lock-closed" : "restaurant-outline"}
-              size={24}
-              color={isBooked ? "#94a3b8" : isSelected ? "#fff" : item.color}
-            />
+      {/* Icon Section */}
+      <View style={styles.tableIconSection}>
+        <LinearGradient
+          colors={
+            isBooked
+              ? ["#94a3b8", "#cbd5e1"]
+              : isSelected
+              ? [item.color, `${item.color}dd`]
+              : [`${item.color}40`, `${item.color}20`]
+          }
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.tableIconGradient}
+        >
+          <Ionicons
+            name={isBooked ? "lock-closed" : "beer"}
+            size={28}
+            color={isBooked ? "#64748b" : isSelected ? "#fff" : item.color}
+          />
+        </LinearGradient>
+
+        {isSelected && !isBooked && (
+          <View style={styles.checkBadge}>
+            <Ionicons name="checkmark-circle" size={24} color="#10b981" />
           </View>
-          {isSelected && (
-            <View style={styles.selectedBadge}>
-              <Ionicons name="checkmark-circle" size={20} color="#10b981" />
-            </View>
-          )}
-        </View>
+        )}
+      </View>
+
+      {/* Table Info */}
+      <View style={styles.tableInfo}>
         <Text
           style={[
             styles.tableName,
@@ -116,70 +86,65 @@ const TableCard: React.FC<{
         >
           {item.tableName}
         </Text>
-        <View style={styles.tableTypeContainer}>
+
+        <View style={styles.tableTypeBadge}>
           <Text
-            style={[styles.tableType, isBooked && styles.tableTextBooked]}
+            style={[
+              styles.tableType,
+              isBooked && styles.tableTextBooked,
+              isSelected && styles.tableTypeSelected,
+            ]}
           >
             {item.tableTypeName}
           </Text>
         </View>
-        <View style={styles.tableInfo}>
+
+        <View style={styles.tableCapacityRow}>
           <Ionicons
-            name="people-outline"
-            size={16}
-            color={isBooked ? "#94a3b8" : "#64748b"}
+            name="people"
+            size={14}
+            color={isBooked ? "#94a3b8" : isSelected ? item.color : "#64748b"}
           />
           <Text
-            style={[styles.tableCapacity, isBooked && styles.tableTextBooked]}
+            style={[
+              styles.tableCapacity,
+              isBooked && styles.tableTextBooked,
+              isSelected && { color: item.color },
+            ]}
           >
             {item.capacity} người
           </Text>
         </View>
+      </View>
+
+      {/* Price Section */}
+      <View style={styles.tablePriceSection}>
         <Text
           style={[
             styles.tablePrice,
             isBooked && styles.tablePriceBooked,
-            isSelected && styles.tablePriceSelected,
+            isSelected && { color: item.color },
           ]}
         >
           {item.depositPrice.toLocaleString()}₫
         </Text>
-        {isBooked && (
+        <Text style={styles.priceLabel}>Giá cọc</Text>
+      </View>
+
+      {isBooked && (
+        <View style={styles.bookedOverlay}>
           <View style={styles.bookedBadge}>
+            <Ionicons name="lock-closed" size={12} color="#fff" />
             <Text style={styles.bookedText}>Đã đặt</Text>
           </View>
-        )}
-      </Pressable>
-    </Animated.View>
+        </View>
+      )}
+    </Pressable>
   );
 };
 
 // Skeleton Loading Component
 const SkeletonCard = () => {
-  const shimmerAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(shimmerAnim, {
-          toValue: 1,
-          duration: 1500,
-          useNativeDriver: true,
-        }),
-        Animated.timing(shimmerAnim, {
-          toValue: 0,
-          duration: 1500,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-  }, []);
-
-  const opacity = shimmerAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.3, 0.7],
-  });
-
   return (
     <View style={styles.container}>
       <StatusBar
@@ -187,36 +152,32 @@ const SkeletonCard = () => {
         translucent
         backgroundColor="transparent"
       />
-      <Animated.View style={[styles.skeletonHeader, { opacity }]} />
+      <View style={styles.skeletonHeader} />
       <View style={styles.skeletonInfoCard}>
-        <Animated.View
-          style={[styles.skeletonText, { width: "70%", height: 28, opacity }]}
-        />
-        <Animated.View
+        <View style={[styles.skeletonText, { width: "70%", height: 28 }]} />
+        <View
           style={[
             styles.skeletonText,
-            { width: "90%", height: 16, marginTop: 16, opacity },
+            { width: "90%", height: 16, marginTop: 16 },
           ]}
         />
-        <Animated.View
+        <View
           style={[
             styles.skeletonText,
-            { width: "60%", height: 16, marginTop: 8, opacity },
+            { width: "60%", height: 16, marginTop: 8 },
           ]}
         />
         <View style={styles.skeletonStatsContainer}>
           {[1, 2, 3].map((i) => (
-            <Animated.View key={i} style={[styles.skeletonStat, { opacity }]} />
+            <View key={i} style={styles.skeletonStat} />
           ))}
         </View>
       </View>
       <View style={styles.section}>
-        <Animated.View
-          style={[styles.skeletonText, { width: 150, height: 24, opacity }]}
-        />
+        <View style={[styles.skeletonText, { width: 150, height: 24 }]} />
         <View style={styles.skeletonTableList}>
           {[1, 2, 3, 4].map((i) => (
-            <Animated.View key={i} style={[styles.skeletonTable, { opacity }]} />
+            <View key={i} style={styles.skeletonTable} />
           ))}
         </View>
       </View>
@@ -246,12 +207,6 @@ const BarDetail: React.FC<any> = ({}) => {
     new Date().toISOString().split("T")[0]
   );
 
-  // Animation refs
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(50)).current;
-  const scaleAnim = useRef(new Animated.Value(0.9)).current;
-  const buttonScale = useRef(new Animated.Value(1)).current;
-
   useEffect(() => {
     fetchBarDetail(id);
     fetchTables(id);
@@ -263,29 +218,14 @@ const BarDetail: React.FC<any> = ({}) => {
     }
   }, [barDetail?.entityAccountId, selectedDate]);
 
-  useEffect(() => {
-    if (!loadingDetail && barDetail) {
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 600,
-          useNativeDriver: true,
-        }),
-        Animated.spring(slideAnim, {
-          toValue: 0,
-          tension: 50,
-          friction: 7,
-          useNativeDriver: true,
-        }),
-        Animated.spring(scaleAnim, {
-          toValue: 1,
-          tension: 50,
-          friction: 7,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    }
-  }, [loadingDetail, barDetail]);
+  // Refresh data khi quay lại màn hình này
+  useFocusEffect(
+    React.useCallback(() => {
+      if (barDetail?.entityAccountId) {
+        fetchBookedTables(barDetail.entityAccountId, selectedDate);
+      }
+    }, [barDetail?.entityAccountId, selectedDate])
+  );
 
   const handleBackPress = () => {
     router.back();
@@ -304,14 +244,16 @@ const BarDetail: React.FC<any> = ({}) => {
 
   const isTableBooked = (tableId: string): boolean => {
     if (!bookedTables || bookedTables.length === 0) return false;
-    
+
     return bookedTables.some((booking) => {
       if (booking.ScheduleStatus === "Canceled") return false;
-      return Object.keys(booking.detailSchedule?.Table || {}).includes(tableId);
+      return Object.keys(booking.detailSchedule?.Table || {}).includes(
+        tableId
+      );
     });
   };
 
-  const calculateTotalAmount = (): number => {
+  const calculateTotalDepositAmount = (): number => {
     if (!selectedTables || selectedTables.length === 0) return 0;
     return selectedTables.reduce((sum, table) => sum + table.depositPrice, 0);
   };
@@ -322,130 +264,96 @@ const BarDetail: React.FC<any> = ({}) => {
       return;
     }
 
-    Animated.sequence([
-      Animated.timing(buttonScale, {
-        toValue: 0.95,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-      Animated.timing(buttonScale, {
-        toValue: 1,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-    ]).start();
-
     handleBookTable();
   };
 
-const handleBookTable = async () => {
-  try {
-    const totalAmount = calculateTotalAmount();
-    const depositAmount = Math.round(totalAmount * 0.3); // 30% deposit
+  const handleBookTable = async () => {
+    try {
+      const totalDepositAmount = calculateTotalDepositAmount();
 
-    Alert.alert(
-      "Xác nhận đặt bàn",
-      `Bàn: ${selectedTables.map((t) => t.tableName).join(", ")}\n` +
-        `Tổng tiền cọc: ${totalAmount.toLocaleString()}₫\n` +
-        `Thanh toán trước (30%): ${depositAmount.toLocaleString()}₫\n\n` +
-        `Xác nhận đặt bàn?`,
-      [
-        {
-          text: "Hủy",
-          style: "cancel",
-        },
-        {
-          text: "Đặt bàn",
-          onPress: async () => {
-            try {
-              const bookingData = {
-                receiverId: barDetail!.entityAccountId,
-                tables: selectedTables.map((t) => ({
-                  id: t.tableId,
-                  tableName: t.tableName,
-                  price: t.depositPrice,
-                })),
-                note: `Đặt bàn - ${new Date().toLocaleString()}`,
-                totalAmount,
-                bookingDate: selectedDate,
-                startTime: `${selectedDate}T00:00:00.000Z`,
-                endTime: `${selectedDate}T23:59:59.999Z`,
-                paymentStatus: "Pending",
-                scheduleStatus: "Confirmed",
-              };
-
-              console.log('bookingData>>>>', bookingData);
-              const bookingResult = await createBooking(bookingData);
-              console.log('bookingResult>>>>', bookingResult);
-
-              // Sửa đây: bookingResult đã là data rồi, không cần .data nữa
-              if (!bookingResult || !bookingResult.BookedScheduleId) {
-                Alert.alert("Lỗi", "Không thể tạo booking!");
-                return;
-              }
-
-              // Create payment link - sửa tham số
-              const paymentResult = await createPaymentLink(
-                bookingResult.BookedScheduleId, // Sửa đây
-                depositAmount
-              );
-
-              console.log('paymentResult>>>>', paymentResult);
-
-              if (paymentResult?.paymentUrl) { // Sửa đây
-                Alert.alert(
-                  "Thành công",
-                  "Chuyển đến trang thanh toán...",
-                  [
-                    {
-                      text: "OK",
-                      onPress: () => {
-                        Linking.openURL(paymentResult.paymentUrl); // Sửa đây
-                        router.back();
-                      },
-                    },
-                  ]
-                );
-              } else {
-                Alert.alert(
-                  "Thành công",
-                  "Đặt bàn thành công! Vui lòng thanh toán sau."
-                );
-                router.back();
-              }
-            } catch (error) {
-              console.error('Booking error:', error);
-              Alert.alert("Lỗi", "Có lỗi xảy ra. Vui lòng thử lại!");
-            }
+      Alert.alert(
+        "Xác nhận đặt bàn",
+        `Bàn: ${selectedTables.map((t) => t.tableName).join(", ")}\n` +
+          `Tổng tiền cọc: ${totalDepositAmount.toLocaleString()}₫\n\n` +
+          `Xác nhận đặt bàn?`,
+        [
+          {
+            text: "Hủy",
+            style: "cancel",
           },
-        },
-      ]
-    );
-  } catch (error) {
-    console.error('handleBookTable error:', error);
-    Alert.alert("Lỗi", "Không thể đặt bàn. Vui lòng thử lại!");
-  }
-};
+          {
+            text: "Đặt bàn",
+            onPress: async () => {
+              try {
+                const bookingData = {
+                  receiverId: barDetail!.entityAccountId,
+                  tables: selectedTables.map((t) => ({
+                    id: t.tableId,
+                    tableName: t.tableName,
+                    price: t.depositPrice,
+                  })),
+                  note: `Đặt bàn - ${new Date().toLocaleString()}`,
+                  totalAmount: totalDepositAmount,
+                  bookingDate: selectedDate,
+                  startTime: `${selectedDate}T00:00:00.000Z`,
+                  endTime: `${selectedDate}T23:59:59.999Z`,
+                  paymentStatus: "Pending",
+                  scheduleStatus: "Confirmed",
+                };
 
-  const renderTableItem = ({
-    item,
-    index,
-  }: {
-    item: BarTable;
-    index: number;
-  }) => {
-    const isBooked = isTableBooked(item.tableId);
-    const isSelected = selectedTables.some((t) => t.tableId === item.tableId);
+                const bookingResult = await createBooking(bookingData);
 
-    return (
-      <TableCard
-        item={item}
-        index={index}
-        isSelected={isSelected}
-        isBooked={isBooked}
-        onSelect={handleTableSelect}
-      />
-    );
+                if (!bookingResult?.BookedScheduleId) {
+                  Alert.alert("Lỗi", "Không thể tạo booking!");
+                  return;
+                }
+
+                // Đặt bàn thành công, clear selected tables
+                setSelectedTables([]);
+
+                // Đặt bàn thành công, tạo payment link
+                const paymentResult = await createPaymentLink(
+                  bookingResult.BookedScheduleId,
+                  totalDepositAmount
+                );
+
+                if (paymentResult?.paymentUrl) {
+                  // Chuyển đến trang thanh toán
+                  router.push({
+                    pathname: "/payment",
+                    params: {
+                      url: paymentResult.paymentUrl,
+                      bookingId: bookingResult.BookedScheduleId,
+                    },
+                  });
+                } else {
+                  // Nếu không có payment link, vẫn coi như đặt bàn thành công
+                  Alert.alert(
+                    "Thành công",
+                    "Đặt bàn thành công! Bạn có thể thanh toán sau.",
+                    [
+                      {
+                        text: "OK",
+                        onPress: () => {
+                          // Refresh lại danh sách bàn đã đặt
+                          fetchBookedTables(barDetail!.entityAccountId, selectedDate);
+                        },
+                      },
+                    ]
+                  );
+                }
+              } catch (error) {
+                console.error("Booking error:", error);
+                Alert.alert("Lỗi", "Có lỗi xảy ra. Vui lòng thử lại!");
+              }
+            },
+          },
+        ]
+      );
+    } catch (error) {
+      console.error("handleBookTable error:", error);
+      Alert.alert("Lỗi", "Không thể đặt bàn. Vui lòng thử lại!");
+    }
   };
 
   if (loadingDetail) {
@@ -482,23 +390,12 @@ const handleBookTable = async () => {
           >
             <Ionicons name="arrow-back" size={24} color="#fff" />
           </Pressable>
-          <Pressable style={styles.favoriteButton}>
-            <Ionicons name="heart-outline" size={24} color="#fff" />
-          </Pressable>
         </View>
       </SafeAreaView>
 
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Bar Image */}
-        <Animated.View
-          style={[
-            styles.imageContainer,
-            {
-              opacity: fadeAnim,
-              transform: [{ scale: scaleAnim }],
-            },
-          ]}
-        >
+        <View style={styles.imageContainer}>
           <Image
             source={{ uri: barDetail.background || barDetail.avatar }}
             style={styles.barImage}
@@ -519,18 +416,10 @@ const handleBookTable = async () => {
               <Text style={styles.roleText}>{barDetail.role}</Text>
             </View>
           )}
-        </Animated.View>
+        </View>
 
         {/* Bar Info */}
-        <Animated.View
-          style={[
-            styles.barInfoCard,
-            {
-              opacity: fadeAnim,
-              transform: [{ translateY: slideAnim }],
-            },
-          ]}
-        >
+        <View style={styles.barInfoCard}>
           <Text style={styles.barName}>{barDetail.barName}</Text>
 
           <View style={styles.infoRow}>
@@ -579,65 +468,76 @@ const handleBookTable = async () => {
               <Text style={styles.statText}>250+</Text>
             </View>
           </View>
-        </Animated.View>
+        </View>
 
         {/* Tables Section */}
-        <Animated.View
-          style={[
-            styles.section,
-            {
-              opacity: fadeAnim,
-            },
-          ]}
-        >
+        <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Chọn bàn</Text>
-            <Ionicons name="calendar-outline" size={20} color="#3b82f6" />
+            <View>
+              <Text style={styles.sectionTitle}>Chọn bàn</Text>
+              <Text style={styles.sectionSubtitle}>
+                {tables.length} bàn có sẵn
+              </Text>
+            </View>
+            <Ionicons name="calendar-outline" size={24} color="#3b82f6" />
           </View>
 
           {selectedTables.length > 0 && (
             <View style={styles.selectedInfo}>
-              <Text style={styles.selectedInfoText}>
-                Đã chọn {selectedTables.length} bàn •{" "}
-                {calculateTotalAmount().toLocaleString()}₫
-              </Text>
+              <LinearGradient
+                colors={["#3b82f6", "#2563eb"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.selectedInfoGradient}
+              >
+                <Ionicons name="checkmark-circle" size={20} color="#fff" />
+                <Text style={styles.selectedInfoText}>
+                  Đã chọn {selectedTables.length} bàn •{" "}
+                  {calculateTotalDepositAmount().toLocaleString()}₫
+                </Text>
+              </LinearGradient>
             </View>
           )}
 
           {loadingTables ? (
             <View style={styles.loadingTableContainer}>
-              <ActivityIndicator size="small" color="#3b82f6" />
+              <ActivityIndicator size="large" color="#3b82f6" />
+              <Text style={styles.loadingText}>Đang tải danh sách bàn...</Text>
             </View>
           ) : !tables || tables.length === 0 ? (
             <View style={styles.emptyTableContainer}>
-              <Ionicons name="restaurant-outline" size={48} color="#cbd5e1" />
+              <Ionicons name="beer-outline" size={64} color="#cbd5e1" />
               <Text style={styles.emptyTableText}>Chưa có bàn nào</Text>
             </View>
           ) : (
-            <FlatList
-              data={tables}
-              renderItem={renderTableItem}
-              keyExtractor={(item) => item.tableId}
-              numColumns={2}
-              columnWrapperStyle={styles.tableRow}
-              contentContainerStyle={styles.tableList}
-            />
-          )}
-        </Animated.View>
+            <View style={styles.tableGrid}>
+              {tables.map((item) => {
+                const isBooked = isTableBooked(item.tableId);
+                const isSelected = selectedTables.some(
+                  (t) => t.tableId === item.tableId
+                );
 
-        <View style={{ height: 100 }} />
+                return (
+                  <View key={item.tableId} style={styles.tableGridItem}>
+                    <TableCard
+                      item={item}
+                      isSelected={isSelected}
+                      isBooked={isBooked}
+                      onSelect={handleTableSelect}
+                    />
+                  </View>
+                );
+              })}
+            </View>
+          )}
+        </View>
+
+        <View style={{ height: 120 }} />
       </ScrollView>
 
       {/* Floating Book Button */}
       {selectedTables.length > 0 && (
-        <Animated.View
-          style={[
-            styles.bookingButtonContainer,
-            {
-              transform: [{ scale: buttonScale }],
-            },
-          ]}
-        >
+        <View style={styles.bookingButtonContainer}>
           <Pressable
             style={styles.bookingButton}
             onPress={handleBookingPress}
@@ -654,15 +554,23 @@ const handleBookTable = async () => {
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
                 <>
-                  <Ionicons name="calendar" size={24} color="#fff" />
-                  <Text style={styles.bookingButtonText}>
-                    Đặt bàn ({selectedTables.length})
-                  </Text>
+                  <View style={styles.bookingButtonIcon}>
+                    <Ionicons name="calendar" size={24} color="#fff" />
+                  </View>
+                  <View style={styles.bookingButtonContent}>
+                    <Text style={styles.bookingButtonText}>
+                      Đặt bàn ({selectedTables.length})
+                    </Text>
+                    <Text style={styles.bookingButtonSubtext}>
+                      Tổng cọc: {calculateTotalDepositAmount().toLocaleString()}₫
+                    </Text>
+                  </View>
+                  <Ionicons name="arrow-forward" size={20} color="#fff" />
                 </>
               )}
             </LinearGradient>
           </Pressable>
-        </Animated.View>
+        </View>
       )}
     </View>
   );
@@ -715,14 +623,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   backButtonCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  favoriteButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
@@ -837,33 +737,55 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 16,
+    marginBottom: 20,
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: "800",
     color: "#0f172a",
+    letterSpacing: -0.5,
+  },
+  sectionSubtitle: {
+    fontSize: 14,
+    color: "#64748b",
+    marginTop: 4,
+    fontWeight: "500",
   },
   selectedInfo: {
-    backgroundColor: "#eff6ff",
-    padding: 12,
-    borderRadius: 12,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: "#3b82f6",
+    marginBottom: 20,
+    borderRadius: 16,
+    overflow: "hidden",
+    shadowColor: "#3b82f6",
+    shadowOpacity: 0.2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  selectedInfoGradient: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    gap: 10,
   },
   selectedInfoText: {
-    fontSize: 14,
-    color: "#1e40af",
-    fontWeight: "600",
-    textAlign: "center",
+    fontSize: 15,
+    color: "#fff",
+    fontWeight: "700",
   },
   loadingTableContainer: {
-    paddingVertical: 40,
+    paddingVertical: 60,
     alignItems: "center",
   },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: "#64748b",
+    fontWeight: "500",
+  },
   emptyTableContainer: {
-    paddingVertical: 40,
+    paddingVertical: 60,
     alignItems: "center",
   },
   emptyTableText: {
@@ -872,76 +794,61 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontWeight: "500",
   },
-  tableList: {
-    paddingVertical: 8,
+  tableGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginHorizontal: -6,
   },
-  tableRow: {
-    justifyContent: "space-between",
-    marginBottom: 14,
+  tableGridItem: {
+    width: "50%",
+    paddingHorizontal: 6,
+    marginBottom: 12,
   },
   tableCard: {
     backgroundColor: "#fff",
-    padding: 16,
     borderRadius: 16,
-    width: (width - 48) / 2,
+    padding: 14,
+    borderWidth: 2,
+    borderColor: "transparent",
     shadowColor: "#000",
     shadowOpacity: 0.08,
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 8,
     elevation: 4,
-    borderWidth: 2,
-    borderColor: "transparent",
+    position: "relative",
   },
   tableCardBooked: {
-    backgroundColor: "#f1f5f9",
-    opacity: 0.6,
+    backgroundColor: "#f8fafc",
+    opacity: 0.7,
   },
   tableCardSelected: {
-    borderColor: "#3b82f6",
+    borderWidth: 3,
     backgroundColor: "#eff6ff",
   },
-  tableCardPressable: {
-    flex: 1,
-  },
-  tableHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+  tableIconSection: {
+    position: "relative",
     marginBottom: 12,
   },
-  tableIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "#eff6ff",
+  tableIconGradient: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     justifyContent: "center",
     alignItems: "center",
   },
-  tableIconBooked: {
-    backgroundColor: "#f1f5f9",
-  },
-  tableIconSelected: {
-    backgroundColor: "#3b82f6",
-  },
-  selectedBadge: {
+  checkBadge: {
     position: "absolute",
+    top: -4,
     right: 0,
-    top: 0,
+  },
+  tableInfo: {
+    marginBottom: 12,
   },
   tableName: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: "700",
     color: "#0f172a",
     marginBottom: 6,
-  },
-  tableTypeContainer: {
-    marginBottom: 8,
-  },
-  tableType: {
-    fontSize: 12,
-    color: "#64748b",
-    fontWeight: "500",
-    fontStyle: "italic",
   },
   tableNameBooked: {
     color: "#94a3b8",
@@ -949,43 +856,79 @@ const styles = StyleSheet.create({
   tableNameSelected: {
     color: "#1e40af",
   },
-  tableInfo: {
-    flexDirection: "row",
-    alignItems: "center",
+  tableTypeBadge: {
+    alignSelf: "flex-start",
+    backgroundColor: "#f1f5f9",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
     marginBottom: 8,
-    gap: 6,
   },
-  tableCapacity: {
-    fontSize: 13,
+  tableType: {
+    fontSize: 11,
     color: "#64748b",
-    fontWeight: "500",
+    fontWeight: "600",
+    textTransform: "uppercase",
+  },
+  tableTypeSelected: {
+    color: "#3b82f6",
   },
   tableTextBooked: {
     color: "#94a3b8",
   },
+  tableCapacityRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  tableCapacity: {
+    fontSize: 12,
+    color: "#64748b",
+    fontWeight: "500",
+  },
+  tablePriceSection: {
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: "#e2e8f0",
+  },
   tablePrice: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "800",
     color: "#3b82f6",
+    marginBottom: 2,
   },
   tablePriceBooked: {
     color: "#94a3b8",
   },
-  tablePriceSelected: {
-    color: "#1e40af",
+  priceLabel: {
+    fontSize: 11,
+    color: "#94a3b8",
+    fontWeight: "500",
+  },
+  bookedOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(248, 250, 252, 0.6)",
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
   },
   bookedBadge: {
-    marginTop: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    backgroundColor: "#94a3b8",
-    borderRadius: 8,
-    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: "#64748b",
+    borderRadius: 20,
   },
   bookedText: {
-    fontSize: 11,
+    fontSize: 12,
     color: "#fff",
-    fontWeight: "600",
+    fontWeight: "700",
   },
   bookingButtonContainer: {
     position: "absolute",
@@ -994,26 +937,44 @@ const styles = StyleSheet.create({
     right: 16,
   },
   bookingButton: {
-    borderRadius: 16,
+    borderRadius: 20,
     overflow: "hidden",
     shadowColor: "#3b82f6",
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.4,
     shadowOffset: { width: 0, height: 8 },
-    shadowRadius: 16,
-    elevation: 10,
+    shadowRadius: 20,
+    elevation: 12,
   },
   bookingButtonGradient: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "space-between",
     paddingVertical: 18,
-    gap: 10,
+    paddingHorizontal: 20,
+  },
+  bookingButtonIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  bookingButtonContent: {
+    flex: 1,
+    marginLeft: 16,
   },
   bookingButtonText: {
     color: "#fff",
     fontSize: 18,
     fontWeight: "700",
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
+  },
+  bookingButtonSubtext: {
+    color: "rgba(255, 255, 255, 0.9)",
+    fontSize: 14,
+    fontWeight: "600",
+    marginTop: 2,
   },
   // Skeleton Styles
   skeletonHeader: {
@@ -1058,8 +1019,8 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   skeletonTable: {
-    width: (width - 48) / 2,
-    height: 160,
+    width: CARD_WIDTH,
+    height: 180,
     backgroundColor: "#e2e8f0",
     borderRadius: 16,
   },

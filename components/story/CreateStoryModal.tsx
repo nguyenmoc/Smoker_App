@@ -1,8 +1,9 @@
-import {useAuth} from '@/hooks/useAuth';
-import {CreateStoryData} from '@/types/storyType';
-import {Ionicons} from '@expo/vector-icons';
+import { useAuth } from '@/hooks/useAuth';
+import { FeedApiService } from "@/services/feedApi";
+import { CreateStoryData } from '@/types/storyType';
+import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import React, {useEffect, useState} from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -18,7 +19,6 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import {FeedApiService} from "@/services/feedApi";
 
 interface CreateStoryModalProps {
     visible: boolean;
@@ -111,7 +111,6 @@ export const CreateStoryModal: React.FC<CreateStoryModalProps> = ({
             expiredAt: next24h
         };
 
-        console.log(storyData);
         onSubmit(storyData);
         handleClose();
     };
