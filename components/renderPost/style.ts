@@ -33,14 +33,7 @@ export const styles = StyleSheet.create({
     },
     card: {
         backgroundColor: '#fff',
-        marginHorizontal: 8,
-        marginBottom: 12,
-        borderRadius: 12,
-        shadowColor: '#000',
-        shadowOpacity: 0.05,
-        shadowOffset: {width: 0, height: 2},
-        shadowRadius: 8,
-        elevation: 3,
+
     },
     cardHeader: {
         flexDirection: 'row',
@@ -274,4 +267,13 @@ export const styles = StyleSheet.create({
         marginLeft: 8,
         fontWeight: '600',
     },
+    repostCard: {
+        backgroundColor: '#ffffff',
+        borderWidth: 1,
+        borderColor: '#e5e7eb',
+        borderRadius: 10,
+        marginHorizontal: 8,
+        marginVertical: 8,
+    },
+
 });

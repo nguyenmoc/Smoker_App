@@ -1,5 +1,5 @@
 import {ProfileHeader} from '@/components/ProfileHeader';
-import RenderPost from "@/components/renderPost";
+import {Index as RenderPost} from "@/components/renderPost";
 import {SidebarMenu} from '@/components/SidebarMenu';
 import {fieldLabels} from '@/constants/profileData';
 import {useAuth} from '@/hooks/useAuth';
@@ -72,6 +72,7 @@ export default function ProfileScreen() {
         updateProfileField,
         updateProfileImage,
         setFullProfile,
+        refreshPost
     } = useProfile();
 
     const [editModalVisible, setEditModalVisible] = useState(false);
@@ -135,14 +136,14 @@ export default function ProfileScreen() {
     const handleFollowersPress = () => {
         router.push({
             pathname: '/follow',
-            params: {type: 'followers', userId: '1'},
+            params: {type: 'followers', userId: authState.EntityAccountId},
         });
     };
 
     const handleFollowingPress = () => {
         router.push({
             pathname: '/follow',
-            params: {type: 'following', userId: '1'},
+            params: {type: 'following', userId: authState.EntityAccountId},
         });
     };
 
@@ -290,40 +291,7 @@ export default function ProfileScreen() {
             </View>
         );
     }
-    const showDataModal = async (item: any) => {
-        try {
-            let request = {
-                title: item.title,
-                content: item.content,
-                images: item.images,
-                videos: item.videos,
-                audios: "",
-                musicTitle: "",
-                artistName: "",
-                description: "",
-                hashTag: "",
-                musicPurchaseLink: "",
-                musicBackgroundImage: "",
-                type: item.type,
-                songId: item.songId,
-                musicId: item.musicId,
-                entityAccountId: accountId,
-                entityId: item.entityId,
-                entityType: item.entityType,
-                repostedFromId: item._id,
-                repostedFromType: item.type
-            }
-            const response = await feedApi.rePost(request);
-            if (response.success) {
-                Alert.alert('Thành công', 'Đã đăng lại bài viết');
-            } else {
-                Alert.alert('Lỗi', 'Không đăng lại bài viết');
-            }
-        } catch (error) {
-            console.log("error repost: ", error);
-            Alert.alert('Lỗi', 'Không đăng lại bài viết');
-        }
-    }
+
     return (
         <View style={styles.container}>
             <StatusBar barStyle="light-content" translucent backgroundColor="transparent"/>
@@ -390,7 +358,16 @@ export default function ProfileScreen() {
                 <Animated.FlatList
                     key="posts-list"
                     data={posts}
-                    renderItem={({item}) => <RenderPost item={item} currentId={authState.currentId} token={authState.token} onAction={showDataModal}/>}
+                    renderItem={({item}) =>
+                        <RenderPost
+                            item={item}
+                            currentId={authState.currentId}
+                            entityAccountId={authState.EntityAccountId}
+                            feedApi={feedApi}
+                            refresh={refreshPost}
+                            isDisableInProfile={true}
+                        />
+                    }
                     keyExtractor={(item) => item._id}
                     ListHeaderComponent={
                         <ProfileHeader
@@ -407,6 +384,9 @@ export default function ProfileScreen() {
                         />
                     }
                     contentContainerStyle={{paddingBottom: 40}}
+                    ItemSeparatorComponent={() => (
+                        <View style={{ height: 8, backgroundColor: '#f0f2f5' }} />
+                    )}
                     showsVerticalScrollIndicator={false}
                     refreshControl={
                         <RefreshControl

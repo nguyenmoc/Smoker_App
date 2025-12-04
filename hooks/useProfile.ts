@@ -19,16 +19,14 @@ export const useProfile = () => {
   const token = authState.token;
   const profileApi = new ProfileApiService(token!!);
   const feedApi = new FeedApiService(token!!);
+    const userId = authState.EntityAccountId!;
 
   const fetchProfile = useCallback(async () => {
     if (!token) return;
-
-
       setLoading(true);
-    setError(null);
+      setError(null);
 
     try {
-        const userId = authState.EntityAccountId!;
         const [postsResponse, followersResponse, followingResponse] = await Promise.all([
             feedApi.getUserPosts(userId),
             feedApi.getFollowers(userId),
@@ -165,6 +163,26 @@ export const useProfile = () => {
     fetchProfile();
   }, [fetchProfile]);
 
+  const fetchPosts  = useCallback(async () => {
+        if (!token) return;
+        setLoading(true);
+        setError(null);
+        try {
+            const postsResponse = await  feedApi.getUserPosts(userId)
+            if (postsResponse.data) {
+                setPosts(postsResponse.data);
+            }
+        } catch (err) {
+            setError('Không thể tải post');
+        } finally {
+            setLoading(false);
+        }
+    }, [token, userId]);
+
+    const refreshPost = useCallback(() => {
+        fetchPosts();
+    }, [fetchPosts]);
+
   return {
     profile,
     posts,
@@ -176,6 +194,7 @@ export const useProfile = () => {
     updateProfileField,
     updateProfileImage,
     refreshBalance,
-    setFullProfile
+    setFullProfile,
+      refreshPost
   };
 };

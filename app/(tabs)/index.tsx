@@ -1,20 +1,19 @@
-import { CreateStoryModal } from '@/components/story/CreateStoryModal';
-import { StoryList } from '@/components/story/StoryList';
-import { StoryViewer } from '@/components/story/StoryViewer';
+import {CreateStoryModal} from '@/components/story/CreateStoryModal';
+import {StoryList} from '@/components/story/StoryList';
+import {StoryViewer} from '@/components/story/StoryViewer';
 import AnimatedHeader from '@/components/ui/AnimatedHeader';
-import { useAuth } from '@/hooks/useAuth';
-import { useFeed } from '@/hooks/useFeed';
-import { useSocket } from '@/hooks/useSocket';
-import { useStory } from '@/hooks/useStory';
-import { FeedApiService } from "@/services/feedApi";
-import { MessageApiService } from '@/services/messageApi';
-import { PostData } from '@/types/postType';
-import { StoryData } from '@/types/storyType';
-import { Ionicons } from '@expo/vector-icons';
-import { ResizeMode, Video } from 'expo-av';
+import {useAuth} from '@/hooks/useAuth';
+import {useFeed} from '@/hooks/useFeed';
+import {useSocket} from '@/hooks/useSocket';
+import {useStory} from '@/hooks/useStory';
+import {MessageApiService} from '@/services/messageApi';
+import {PostData} from '@/types/postType';
+import {StoryData} from '@/types/storyType';
+import {Ionicons} from '@expo/vector-icons';
+import {ResizeMode, Video} from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
-import { useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import {useRouter} from 'expo-router';
+import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -24,6 +23,7 @@ import {
     Modal,
     RefreshControl,
     ScrollView,
+    Share,
     StatusBar,
     StyleSheet,
     Text,
@@ -31,9 +31,9 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-
-const {width: screenWidth} = Dimensions.get('window');
+import {SafeAreaView} from 'react-native-safe-area-context';
+import {FeedApiService} from "@/services/feedApi";
+import {Index as RenderPost} from "@/components/renderPost";
 
 const PostInputBox = ({openModal, pickMedia, avatar}: {
     openModal: () => void;
@@ -78,12 +78,9 @@ export default function HomeScreen() {
     const [postText, setPostText] = useState('');
     const [selectedMedia, setSelectedMedia] = useState<{ uri: string; type: 'image' | 'video' }[]>([]);
     const scrollY = useRef(new Animated.Value(0)).current;
-    const [currentImageIndexes, setCurrentImageIndexes] = useState<{ [key: string]: number }>({});
     const {authState} = useAuth();
-    const currentUserId = authState.currentId;
     const avartarAuthor = authState.avatar;
     const entityAccountId = authState.EntityAccountId;
-    const currentUserName = authState.userEmail || 'Bạn';
     const feedApi = new FeedApiService(authState.token!);
 
     const {socket} = useSocket();
@@ -143,7 +140,6 @@ export default function HomeScreen() {
     const [storyViewerVisible, setStoryViewerVisible] = useState(false);
     const [currentStoryIndex, setCurrentStoryIndex] = useState(0);
     const [createStoryModalVisible, setCreateStoryModalVisible] = useState(false);
-    const [selectedStoryId, setSelectedStoryId] = useState<string | undefined>(undefined);
 
     const {
         posts,
@@ -240,34 +236,10 @@ export default function HomeScreen() {
         }
     }, [postText, selectedMedia, createPost, closeModal]);
 
-    const handleLike = useCallback((postId: string) => {
-        likePost(postId);
-    }, [likePost]);
-
-    const handleComment = useCallback((postId: string) => {
-        router.push({
-            pathname: '/post',
-            params: {id: postId}
-        });
-    }, [router]);
-
-    const handleUserPress = useCallback((userId: string) => {
-        router.push({
-            pathname: '/user',
-            params: {id: userId}
-        });
-    }, [router]);
-
     // Story handlers
     const handleStoryPress = useCallback((story: StoryData, index: number) => {
-        setSelectedStoryId(story._id);
         setCurrentStoryIndex(index);
         setStoryViewerVisible(true);
-    }, []);
-
-    const handleCloseStoryViewer = useCallback(() => {
-        setStoryViewerVisible(false);
-        setSelectedStoryId(undefined);
     }, []);
 
     const handleCreateStory = useCallback(() => {
@@ -286,206 +258,11 @@ export default function HomeScreen() {
         refreshStories();
     }, [refresh, refreshStories]);
 
-    const formatTime = (dateString: string) => {
-        const date = new Date(dateString);
-        const now = new Date();
-        const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
-
-        if (diffInHours < 1) return 'Vừa xong';
-        if (diffInHours < 24) return `${diffInHours} giờ trước`;
-        return `${Math.floor(diffInHours / 24)} ngày trước`;
-    };
-
     const headerTranslateY = scrollY.interpolate({
         inputRange: [0, 100],
         outputRange: [0, -100],
         extrapolate: 'clamp',
     });
-
-    const handleImageScroll = (event: any, postId: string) => {
-        const contentOffsetX = event.nativeEvent.contentOffset.x;
-        const currentIndex = Math.round(contentOffsetX / screenWidth);
-        setCurrentImageIndexes(prev => ({
-            ...prev,
-            [postId]: currentIndex
-        }));
-    };
-
-    const renderMediaItem = (mediaUrl: string, isVideo: boolean = false) => {
-        if (isVideo) {
-            return (
-                <Video
-                    source={{uri: mediaUrl}}
-                    style={styles.postImage}
-                    resizeMode={ResizeMode.COVER}
-                    useNativeControls
-                    shouldPlay={false}
-                />
-            );
-        } else {
-            return (
-                <Image
-                    source={{uri: mediaUrl}}
-                    style={styles.postImage}
-                    resizeMode="cover"
-                />
-            );
-        }
-    };
-
-    const renderItem = ({item}: { item: PostData }) => {
-        const likeCount = Object.keys(item.likes || {}).length;
-        const commentCount = Object.keys(item.comments || {}).length;
-        const isLiked = !!currentUserId && !!Object.values(item.likes || {}).find(
-            like => like.accountId === currentUserId
-        );
-
-        let mediaItems = item.medias || item.mediaIds || [];
-        const imageMedias = mediaItems.filter(m => m.type === 'image');
-        const videoMedias = mediaItems.filter(m => m.type === 'video');
-        const hasMedia = mediaItems.length > 0;
-
-        const handleRepost = async () => {
-            try {
-                let request = {
-                    title: item.title,
-                    content: item.content,
-                    images: item.images,
-                    videos: item.videos,
-                    audios: "",
-                    musicTitle: "",
-                    artistName: "",
-                    description: "",
-                    hashTag: "",
-                    musicPurchaseLink: "",
-                    musicBackgroundImage: "",
-                    type: item.type,
-                    songId: item.songId,
-                    musicId: item.musicId,
-                    entityAccountId: entityAccountId,
-                    entityId: item.entityId,
-                    entityType: item.entityType,
-                    repostedFromId: item._id,
-                    repostedFromType: item.type
-                }
-                const response = await feedApi.rePost(request);
-                if (response.success) {
-                    Alert.alert('Thành công', 'Đã đăng lại bài viết');
-                } else {
-                    Alert.alert('Lỗi', 'Không đăng lại bài viết');
-                }
-            } catch (error) {
-                console.log("error repost: ", error);
-                Alert.alert('Lỗi', 'Không đăng lại bài viết');
-            }
-        };
-        return (
-            <View style={styles.card}>
-                <View style={styles.cardHeader}>
-                    <TouchableOpacity onPress={() => handleUserPress(item.authorEntityAccountId)}>
-                        <Image source={{uri: item.authorAvatar}} style={styles.avatar}/>
-                    </TouchableOpacity>
-                    <View style={styles.headerInfo}>
-                        <TouchableOpacity onPress={() => handleUserPress(item.authorEntityAccountId)}>
-                            <Text style={styles.username}>{item.authorName}</Text>
-                        </TouchableOpacity>
-                        <Text style={styles.subText}>
-                            {formatTime(item.createdAt)}
-                        </Text>
-                    </View>
-                </View>
-
-                <TouchableOpacity onPress={() => handleComment(item._id)}>
-                    <Text style={styles.content}>{item.content}</Text>
-                </TouchableOpacity>
-
-                {hasMedia && (
-                    <View style={styles.imageGalleryContainer}>
-                        <ScrollView
-                            horizontal
-                            pagingEnabled
-                            showsHorizontalScrollIndicator={false}
-                            snapToInterval={screenWidth - 16}
-                            decelerationRate="fast"
-                            onScroll={(event) => handleImageScroll(event, item._id)}
-                            scrollEventThrottle={16}
-                        >
-                            {imageMedias.map((media, index) => (
-                                <TouchableOpacity
-                                    key={`image-${media._id || media.id || index}`}
-                                    style={styles.imageContainer}
-                                    onPress={() => handleComment(item._id)}
-                                >
-                                    {renderMediaItem(media.url, false)}
-                                </TouchableOpacity>
-                            ))}
-
-                            {videoMedias.map((media, index) => (
-                                <TouchableOpacity
-                                    key={`video-${media._id || media.id || index}`}
-                                    style={styles.imageContainer}
-                                    onPress={() => handleComment(item._id)}
-                                >
-                                    {renderMediaItem(media.url, true)}
-                                </TouchableOpacity>
-                            ))}
-                        </ScrollView>
-
-                        {mediaItems.length > 1 && (
-                            <View style={styles.imageCounter}>
-                                <Text style={styles.imageCounterText}>
-                                    {(currentImageIndexes[item._id] || 0) + 1}/{mediaItems.length}
-                                </Text>
-                            </View>
-                        )}
-                    </View>
-                )}
-
-                <View style={styles.statsContainer}>
-                    <Text style={styles.statsText}>
-                        {likeCount > 0 && `${likeCount} lượt thích`}
-                        {likeCount > 0 && commentCount > 0 && ' • '}
-                        {commentCount > 0 && `${commentCount} bình luận`}
-                    </Text>
-                </View>
-
-                <View style={styles.actions}>
-                    <TouchableOpacity
-                        style={styles.actionBtn}
-                        onPress={() => handleLike(item._id)}
-                    >
-                        <Ionicons
-                            name={isLiked ? "heart" : "heart-outline"}
-                            size={20}
-                            color={isLiked ? "#ef4444" : "#6b7280"}
-                        />
-                        <Text style={[
-                            styles.actionText,
-                            isLiked && {color: '#ef4444'}
-                        ]}>
-                            {isLiked ? 'Đã thích' : 'Thích'}
-                        </Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        style={styles.actionBtn}
-                        onPress={() => handleComment(item._id)}
-                    >
-                        <Ionicons name="chatbubble-outline" size={18} color="#6b7280"/>
-                        <Text style={styles.actionText}>Bình luận</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        style={styles.actionBtn}
-                        onPress={handleRepost}
-                    >
-                        <Ionicons name="repeat-outline" size={18} color="#6b7280"/>
-                        <Text style={styles.actionText}>Đăng lại</Text>
-                    </TouchableOpacity>
-                </View>
-            </View>
-        );
-    };
 
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
@@ -525,9 +302,20 @@ export default function HomeScreen() {
 
             <Animated.FlatList
                 data={posts}
-                renderItem={renderItem}
+                renderItem={({item}) =>
+                    <RenderPost
+                        item={item}
+                        currentId={authState.currentId}
+                        entityAccountId={authState.EntityAccountId}
+                        feedApi={feedApi}
+                        refresh={refresh}
+                    />
+                }
                 keyExtractor={(item) => item._id}
                 style={[styles.container, {paddingTop: 40}]}
+                ItemSeparatorComponent={() => (
+                    <View style={{height: 8, backgroundColor: '#f0f2f5'}}/>
+                )}
                 contentContainerStyle={{paddingBottom: 40}}
                 ListHeaderComponent={
                     <>
@@ -671,13 +459,11 @@ export default function HomeScreen() {
                 visible={storyViewerVisible}
                 stories={stories}
                 initialIndex={currentStoryIndex}
-                initialStoryId={selectedStoryId} 
                 currentUserEntityAccountId={entityAccountId}
                 onClose={() => setStoryViewerVisible(false)}
                 onLike={likeStory}
                 onMarkAsViewed={markAsViewed}
                 onDelete={deleteStory}
-                onClose={handleCloseStoryViewer}
             />
 
             {/* Create Story Modal */}
@@ -723,41 +509,11 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         backgroundColor: '#f3f4f6',
     },
-    card: {
-        backgroundColor: '#fff',
-        marginHorizontal: 8,
-        marginBottom: 12,
-        borderRadius: 12,
-        shadowColor: '#000',
-        shadowOpacity: 0.05,
-        shadowOffset: {width: 0, height: 2},
-        shadowRadius: 8,
-        elevation: 3,
-    },
-    cardHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 12,
-        paddingBottom: 8,
-    },
-    headerInfo: {
-        flex: 1,
-    },
     avatar: {
         width: 40,
         height: 40,
         borderRadius: 20,
         marginRight: 12
-    },
-    username: {
-        fontWeight: 'bold',
-        fontSize: 15,
-        color: '#111827'
-    },
-    subText: {
-        fontSize: 12,
-        color: '#6b7280',
-        marginTop: 2
     },
     content: {
         paddingHorizontal: 12,
@@ -765,60 +521,6 @@ const styles = StyleSheet.create({
         fontSize: 15,
         color: '#374151',
         lineHeight: 20,
-    },
-    imageGalleryContainer: {
-        position: 'relative',
-        marginBottom: 8,
-    },
-    imageContainer: {
-        width: screenWidth - 16,
-    },
-    postImage: {
-        width: screenWidth - 16,
-        height: 250,
-    },
-    imageCounter: {
-        position: 'absolute',
-        top: 12,
-        right: 12,
-        backgroundColor: 'rgba(0, 0, 0, 0.6)',
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 12,
-    },
-    imageCounterText: {
-        color: '#fff',
-        fontSize: 12,
-        fontWeight: '500',
-    },
-    statsContainer: {
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        borderBottomWidth: 1,
-        borderBottomColor: '#f3f4f6',
-    },
-    statsText: {
-        fontSize: 13,
-        color: '#6b7280',
-    },
-    actions: {
-        flexDirection: 'row',
-        paddingVertical: 8,
-        paddingHorizontal: 4,
-    },
-    actionBtn: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        flex: 1,
-        paddingVertical: 8,
-        borderRadius: 8,
-    },
-    actionText: {
-        marginLeft: 6,
-        fontSize: 14,
-        color: '#6b7280',
-        fontWeight: '500',
     },
     uploadingContainer: {
         backgroundColor: '#fff',
