@@ -40,17 +40,84 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
   onMarkAsViewed,
   onDelete,
 }) => {
-  const [currentIndex, setCurrentIndex] = useState(initialIndex);
+  const [currentUserGroupIndex, setCurrentUserGroupIndex] = useState(0);
+  const [currentStoryIndexInGroup, setCurrentStoryIndexInGroup] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const progressAnim = useRef(new Animated.Value(0)).current;
   const [sound, setSound] = useState<Audio.Sound | null>(null);
 
-  const currentStory = stories[currentIndex];
+  // Gom stories theo người dùng
+  const groupStoriesByUser = (allStories: StoryData[]) => {
+    const myStories = allStories.filter(s => s.isOwner);
+    const otherStories = allStories.filter(s => !s.isOwner);
+
+    const grouped = new Map<string, StoryData[]>();
+    
+    otherStories.forEach(story => {
+      const key = story.entityAccountId || story.authorName;
+      if (!grouped.has(key)) {
+        grouped.set(key, []);
+      }
+      grouped.get(key)!.push(story);
+    });
+
+    // Sắp xếp stories trong mỗi nhóm theo thời gian (mới nhất trước)
+    grouped.forEach((stories) => {
+      stories.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    });
+
+    // Tạo danh sách các nhóm người dùng
+    const userGroups: StoryData[][] = [];
+    
+    // Thêm nhóm stories của bản thân (nếu có)
+    if (myStories.length > 0) {
+      const sortedMyStories = [...myStories].sort((a, b) => 
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+      userGroups.push(sortedMyStories);
+    }
+
+    // Thêm các nhóm stories của người khác, sắp xếp theo thời gian story mới nhất
+    const sortedOtherGroups = Array.from(grouped.values())
+      .sort((a, b) => new Date(b[0].createdAt).getTime() - new Date(a[0].createdAt).getTime());
+    
+    userGroups.push(...sortedOtherGroups);
+
+    return userGroups;
+  };
+
+  const userGroups = groupStoriesByUser(stories);
+  const currentGroup = userGroups[currentUserGroupIndex] || [];
+  const currentStory = currentGroup[currentStoryIndexInGroup];
+
   const isOwner = currentStory?.entityAccountId === currentUserEntityAccountId;
   const isLiked = !!currentUserEntityAccountId && !!Object.values(currentStory?.likes || {}).find(
     like => like.entityAccountId === currentUserEntityAccountId
   );
   const likeCount = Object.keys(currentStory?.likes || {}).length;
+
+  // Tìm index của user group dựa trên initialIndex
+  useEffect(() => {
+    if (visible && stories.length > 0) {
+      const clickedStory = stories[initialIndex];
+      let groupIndex = 0;
+      
+      for (let i = 0; i < userGroups.length; i++) {
+        const groupHasStory = userGroups[i].some(s => s._id === clickedStory._id);
+        if (groupHasStory) {
+          groupIndex = i;
+          break;
+        }
+      }
+      
+      setCurrentUserGroupIndex(groupIndex);
+      setCurrentStoryIndexInGroup(0);
+    }
+  }, [visible, initialIndex]);
+
+  // Kiểm tra xem story có ảnh không
+  const hasImage = currentStory?.images || 
+    (currentStory?.mediaIds && currentStory.mediaIds.length > 0 && currentStory.mediaIds[0].url);
 
   useEffect(() => {
     if (visible && currentStory) {
@@ -64,7 +131,7 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
         sound.unloadAsync();
       }
     };
-  }, [visible, currentIndex]);
+  }, [visible, currentUserGroupIndex, currentStoryIndexInGroup]);
 
   // Play audio if story has music
   useEffect(() => {
@@ -134,16 +201,31 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
   };
 
   const goToNext = () => {
-    if (currentIndex < stories.length - 1) {
-      setCurrentIndex(currentIndex + 1);
-    } else {
+    // Nếu còn story trong nhóm hiện tại
+    if (currentStoryIndexInGroup < currentGroup.length - 1) {
+      setCurrentStoryIndexInGroup(currentStoryIndexInGroup + 1);
+    } 
+    // Chuyển sang nhóm người dùng tiếp theo
+    else if (currentUserGroupIndex < userGroups.length - 1) {
+      setCurrentUserGroupIndex(currentUserGroupIndex + 1);
+      setCurrentStoryIndexInGroup(0);
+    } 
+    // Đã hết tất cả stories
+    else {
       onClose();
     }
   };
 
   const goToPrevious = () => {
-    if (currentIndex > 0) {
-      setCurrentIndex(currentIndex - 1);
+    // Nếu không phải story đầu tiên trong nhóm
+    if (currentStoryIndexInGroup > 0) {
+      setCurrentStoryIndexInGroup(currentStoryIndexInGroup - 1);
+    } 
+    // Quay lại nhóm người dùng trước đó
+    else if (currentUserGroupIndex > 0) {
+      const previousGroupIndex = currentUserGroupIndex - 1;
+      setCurrentUserGroupIndex(previousGroupIndex);
+      setCurrentStoryIndexInGroup(userGroups[previousGroupIndex].length - 1);
     }
   };
 
@@ -173,6 +255,22 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
 
   if (!currentStory) return null;
 
+  const gradientColors = [
+    ['#667eea', '#764ba2', '#f093fb'],
+    ['#fa709a', '#fee140'],
+    ['#30cfd0', '#330867'],
+    ['#a8edea', '#fed6e3'],
+    ['#ff9a9e', '#fecfef', '#fecfef'],
+    ['#ffecd2', '#fcb69f'],
+    ['#ff6e7f', '#bfe9ff'],
+    ['#e0c3fc', '#8ec5fc'],
+  ];
+  
+  // Chọn gradient dựa trên story id để đảm bảo consistent
+  const gradientIndex = currentStory._id ? 
+    currentStory._id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % gradientColors.length : 0;
+  const selectedGradient = gradientColors[gradientIndex];
+
   return (
     <Modal
       visible={visible}
@@ -183,22 +281,27 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
       
       <View style={styles.container}>
-        {/* Background Image */}
-        {currentStory.images ? (
-          <Image
-            source={{ uri: currentStory.images }}
-            style={styles.backgroundImage}
-            resizeMode="cover"
-          />
+        {/* Background */}
+        {hasImage ? (
+          <>
+            <Image
+              source={{ 
+                uri: currentStory.images || 
+                  (currentStory.mediaIds && currentStory.mediaIds.length > 0 
+                    ? currentStory.mediaIds[0].url 
+                    : '')
+              }}
+              style={styles.backgroundImage}
+              resizeMode="cover"
+            />
+            <View style={styles.overlay} />
+          </>
         ) : (
           <LinearGradient
-            colors={['#667eea', '#764ba2', '#f093fb']}
+            colors={selectedGradient}
             style={styles.backgroundGradient}
           />
         )}
-
-        {/* Dark Overlay */}
-        <View style={styles.overlay} />
 
         {/* Touch Areas for Navigation */}
         <View style={styles.touchableArea}>
@@ -220,16 +323,16 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
 
         {/* Progress Bars */}
         <View style={styles.progressContainer}>
-          {stories.map((_, index) => (
+          {currentGroup.map((_, index) => (
             <View key={index} style={styles.progressBarBackground}>
               <Animated.View
                 style={[
                   styles.progressBarFill,
                   {
                     width:
-                      index < currentIndex
+                      index < currentStoryIndexInGroup
                         ? '100%'
-                        : index === currentIndex
+                        : index === currentStoryIndexInGroup
                         ? progressAnim.interpolate({
                             inputRange: [0, 1],
                             outputRange: ['0%', '100%'],
@@ -273,16 +376,39 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
           </View>
         </View>
 
-        {/* Content */}
+        {/* Content - Centered when no image */}
         {currentStory.content && (
-          <View style={styles.contentContainer}>
-            <Text style={styles.contentText}>{currentStory.content}</Text>
+          <View style={[
+            styles.contentContainer,
+            !hasImage && styles.contentCentered
+          ]}>
+            <Text style={[
+              styles.contentText,
+              !hasImage && styles.contentTextLarge
+            ]}>
+              {currentStory.content}
+            </Text>
           </View>
         )}
 
         {/* Music Info */}
-        {currentStory.songId && (
+        {currentStory.songId && hasImage && (
           <View style={styles.musicInfo}>
+            <Ionicons name="musical-notes" size={20} color="#fff" />
+            <View style={styles.musicTextContainer}>
+              <Text style={styles.songTitle} numberOfLines={1}>
+                {currentStory.songId.title}
+              </Text>
+              <Text style={styles.artistName} numberOfLines={1}>
+                {currentStory.songId.artistName}
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* Music Info - Repositioned when no image */}
+        {currentStory.songId && !hasImage && (
+          <View style={[styles.musicInfo, styles.musicInfoBottom]}>
             <Ionicons name="musical-notes" size={20} color="#fff" />
             <View style={styles.musicTextContainer}>
               <Text style={styles.songTitle} numberOfLines={1}>
@@ -416,11 +542,17 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 15,
     fontWeight: 'bold',
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
   timeAgo: {
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: 'rgba(255, 255, 255, 0.9)',
     fontSize: 12,
     marginTop: 2,
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
   headerActions: {
     flexDirection: 'row',
@@ -439,6 +571,13 @@ const styles = StyleSheet.create({
     right: 16,
     zIndex: 10,
   },
+  contentCentered: {
+    top: '50%',
+    bottom: 'auto',
+    transform: [{ translateY: -50 }],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   contentText: {
     color: '#fff',
     fontSize: 16,
@@ -446,6 +585,16 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0, 0, 0, 0.75)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
+  },
+  contentTextLarge: {
+    fontSize: 24,
+    lineHeight: 36,
+    fontWeight: '600',
+    textAlign: 'center',
+    paddingHorizontal: 20,
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 8,
   },
   musicInfo: {
     position: 'absolute',
@@ -458,6 +607,9 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 12,
     zIndex: 10,
+  },
+  musicInfoBottom: {
+    bottom: 140,
   },
   musicTextContainer: {
     marginLeft: 12,
@@ -487,5 +639,8 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: 'bold',
     marginTop: 4,
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
 });

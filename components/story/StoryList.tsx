@@ -32,32 +32,54 @@ export const StoryList: React.FC<StoryListProps> = ({
   onCreateStory,
   loading = false,
 }) => {
-  const getLatestStoryForUser = (userStories: StoryData[]) => {
-    if (userStories.length === 0) return null;
-    return userStories.reduce((latest, current) => {
-      return new Date(current.createdAt) > new Date(latest.createdAt) ? current : latest;
+  // Gom stories theo người dùng
+  const groupStoriesByUser = (userStories: StoryData[]) => {
+    const grouped = new Map<string, StoryData[]>();
+    
+    userStories.forEach(story => {
+      const key = story.entityAccountId || story.authorName;
+      if (!grouped.has(key)) {
+        grouped.set(key, []);
+      }
+      grouped.get(key)!.push(story);
     });
+
+    // Sắp xếp stories trong mỗi nhóm theo thời gian (mới nhất trước)
+    grouped.forEach((stories) => {
+      stories.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    });
+
+    return grouped;
+  };
+
+  // Lấy story đại diện cho user (story mới nhất chưa xem, hoặc story mới nhất nếu đã xem hết)
+  const getRepresentativeStory = (userStories: StoryData[]): StoryData => {
+    const unviewedStories = userStories.filter(s => !s.viewed);
+    if (unviewedStories.length > 0) {
+      return unviewedStories[0]; // Đã được sort theo thời gian rồi
+    }
+    return userStories[0]; // Story mới nhất
   };
 
   const myStories = stories.filter(s => s.isOwner);
   const otherStories = stories.filter(s => !s.isOwner);
 
-  const latestMyStory = getLatestStoryForUser(myStories);
+  const myStoriesGrouped = groupStoriesByUser(myStories);
+  const otherStoriesGrouped = groupStoriesByUser(otherStories);
 
-  const latestOtherStoriesMap = new Map<string, StoryData>();
-  
-  otherStories.forEach(story => {
-    const authorKey = story.authorName;
-    const existingStory = latestOtherStoriesMap.get(authorKey);
-    
-    if (!existingStory || new Date(story.createdAt) > new Date(existingStory.createdAt)) {
-      latestOtherStoriesMap.set(authorKey, story);
-    }
-  });
+  // Danh sách story đại diện của người khác, sắp xếp theo thời gian story mới nhất
+  const otherStoriesRepresentatives = Array.from(otherStoriesGrouped.entries())
+    .map(([_, userStories]) => ({
+      representative: getRepresentativeStory(userStories),
+      allStories: userStories,
+      latestTime: new Date(userStories[0].createdAt).getTime(),
+      hasUnviewed: userStories.some(s => !s.viewed)
+    }))
+    .sort((a, b) => b.latestTime - a.latestTime);
 
-  const sortedOtherStories: StoryData[] = Array.from(latestOtherStoriesMap.values()).sort((a, b) => 
-    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
+  // Story đại diện của bản thân
+  const myRepresentativeStory = myStories.length > 0 ? getRepresentativeStory(myStories) : null;
+  const hasMyStories = myStories.length > 0;
 
   return (
     <View style={styles.container}>
@@ -66,6 +88,7 @@ export const StoryList: React.FC<StoryListProps> = ({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
+        {/* Create Story Card */}
         <TouchableOpacity style={styles.storyCard} onPress={onCreateStory}>
           <View style={styles.createStoryImageContainer}>
             <Image
@@ -81,15 +104,16 @@ export const StoryList: React.FC<StoryListProps> = ({
           </View>
         </TouchableOpacity>
 
-        {latestMyStory && (
+        {/* My Stories */}
+        {hasMyStories && myRepresentativeStory && (
           <TouchableOpacity
             style={styles.storyCard}
-            onPress={() => onStoryPress(latestMyStory, 0)}
+            onPress={() => onStoryPress(myRepresentativeStory, 0)}
           >
             {(() => {
-              const imageUrl = latestMyStory.images || 
-                (latestMyStory.mediaIds && latestMyStory.mediaIds.length > 0 
-                  ? latestMyStory.mediaIds[0].url 
+              const imageUrl = myRepresentativeStory.images || 
+                (myRepresentativeStory.mediaIds && myRepresentativeStory.mediaIds.length > 0 
+                  ? myRepresentativeStory.mediaIds[0].url 
                   : null
                 );
               
@@ -125,6 +149,7 @@ export const StoryList: React.FC<StoryListProps> = ({
           </TouchableOpacity>
         )}
 
+        {/* Loading Card */}
         {loading && (
           <View style={styles.storyCard}>
             <View style={[styles.storyCardImage, styles.loadingCard]}>
@@ -139,50 +164,55 @@ export const StoryList: React.FC<StoryListProps> = ({
           </View>
         )}
 
-        {sortedOtherStories.map((story, index) => (
-          <TouchableOpacity
-            key={story._id}
-            style={styles.storyCard}
-            onPress={() => onStoryPress(story, index)}
-          >
-            <Image
-              source={{ 
-                uri: story.images || 
-                (story.mediaIds && story.mediaIds.length > 0 ? story.mediaIds[0].url : story.authorAvatar)
-              }}
-              style={styles.storyCardImage}
-            />
-            <View style={styles.storyCardOverlay} />
-            <View style={styles.storyHeader}>
-              <View style={styles.avatarContainer}>
-                <Image source={{ uri: story.authorAvatar }} style={styles.storyAvatar} />
-                {!story.viewed && (
-                  <LinearGradient
-                    colors={['#f59e0b', '#ef4444', '#ec4899']}
-                    style={styles.avatarBorder}
-                  />
-                )}
-              </View>
-            </View>
-            {story.songId && (
-              <View style={styles.musicBadge}>
-                <Ionicons name="musical-notes" size={12} color="#fff" />
-              </View>
-            )}
-            <LinearGradient
-              colors={['transparent', 'rgba(0,0,0,0.6)']}
-              style={styles.storyCardFooter}
+        {/* Other Users' Stories */}
+        {otherStoriesRepresentatives.map((item, index) => {
+          const story = item.representative;
+          return (
+            <TouchableOpacity
+              key={story._id}
+              style={styles.storyCard}
+              onPress={() => onStoryPress(story, index)}
             >
-              <Text style={styles.storyCardName} numberOfLines={2}>
-                {story.authorName}
-              </Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        ))}
+              <Image
+                source={{ 
+                  uri: story.images || 
+                  (story.mediaIds && story.mediaIds.length > 0 ? story.mediaIds[0].url : story.authorAvatar)
+                }}
+                style={styles.storyCardImage}
+              />
+              <View style={styles.storyCardOverlay} />
+              <View style={styles.storyHeader}>
+                <View style={styles.avatarContainer}>
+                  <Image source={{ uri: story.authorAvatar }} style={styles.storyAvatar} />
+                  {item.hasUnviewed && (
+                    <LinearGradient
+                      colors={['#f59e0b', '#ef4444', '#ec4899']}
+                      style={styles.avatarBorder}
+                    />
+                  )}
+                </View>
+              </View>
+              {story.songId && (
+                <View style={styles.musicBadge}>
+                  <Ionicons name="musical-notes" size={12} color="#fff" />
+                </View>
+              )}
+              <LinearGradient
+                colors={['transparent', 'rgba(0,0,0,0.6)']}
+                style={styles.storyCardFooter}
+              >
+                <Text style={styles.storyCardName} numberOfLines={2}>
+                  {story.authorName}
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          );
+        })}
       </ScrollView>
     </View>
   );
 };
+
 const styles = StyleSheet.create({
   container: {
     backgroundColor: '#fff',
