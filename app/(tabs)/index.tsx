@@ -143,6 +143,7 @@ export default function HomeScreen() {
     const [storyViewerVisible, setStoryViewerVisible] = useState(false);
     const [currentStoryIndex, setCurrentStoryIndex] = useState(0);
     const [createStoryModalVisible, setCreateStoryModalVisible] = useState(false);
+    const [selectedStoryId, setSelectedStoryId] = useState<string | undefined>(undefined);
 
     const {
         posts,
@@ -259,8 +260,14 @@ export default function HomeScreen() {
 
     // Story handlers
     const handleStoryPress = useCallback((story: StoryData, index: number) => {
+        setSelectedStoryId(story._id);
         setCurrentStoryIndex(index);
         setStoryViewerVisible(true);
+    }, []);
+
+    const handleCloseStoryViewer = useCallback(() => {
+        setStoryViewerVisible(false);
+        setSelectedStoryId(undefined);
     }, []);
 
     const handleCreateStory = useCallback(() => {
@@ -664,11 +671,13 @@ export default function HomeScreen() {
                 visible={storyViewerVisible}
                 stories={stories}
                 initialIndex={currentStoryIndex}
+                initialStoryId={selectedStoryId} 
                 currentUserEntityAccountId={entityAccountId}
                 onClose={() => setStoryViewerVisible(false)}
                 onLike={likeStory}
                 onMarkAsViewed={markAsViewed}
                 onDelete={deleteStory}
+                onClose={handleCloseStoryViewer}
             />
 
             {/* Create Story Modal */}

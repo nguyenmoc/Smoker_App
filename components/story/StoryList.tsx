@@ -165,13 +165,13 @@ export const StoryList: React.FC<StoryListProps> = ({
         )}
 
         {/* Other Users' Stories */}
-        {otherStoriesRepresentatives.map((item, index) => {
+        {otherStoriesRepresentatives.map((item) => {
           const story = item.representative;
           return (
             <TouchableOpacity
               key={story._id}
               style={styles.storyCard}
-              onPress={() => onStoryPress(story, index)}
+              onPress={() => onStoryPress(story, 0)} // Index không quan trọng nữa vì có story._id
             >
               <Image
                 source={{ 

@@ -23,6 +23,7 @@ interface StoryViewerProps {
   visible: boolean;
   stories: StoryData[];
   initialIndex: number;
+  initialStoryId?: string;
   currentUserEntityAccountId?: string;
   onClose: () => void;
   onLike: (storyId: string) => void;
@@ -34,6 +35,7 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
   visible,
   stories,
   initialIndex,
+  initialStoryId,
   currentUserEntityAccountId,
   onClose,
   onLike,
@@ -96,24 +98,44 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
   );
   const likeCount = Object.keys(currentStory?.likes || {}).length;
 
-  // Tìm index của user group dựa trên initialIndex
+  // Tìm index của user group và story index dựa trên initialStoryId hoặc initialIndex
   useEffect(() => {
-    if (visible && stories.length > 0) {
-      const clickedStory = stories[initialIndex];
-      let groupIndex = 0;
+    if (visible && stories.length > 0 && userGroups.length > 0) {
+      // Ưu tiên sử dụng initialStoryId nếu có
+      let targetStory: StoryData | undefined;
+      
+      if (initialStoryId) {
+        // Tìm story theo ID
+        targetStory = stories.find(s => s._id === initialStoryId);
+      } else if (initialIndex >= 0 && initialIndex < stories.length) {
+        // Fallback: sử dụng initialIndex
+        targetStory = stories[initialIndex];
+      }
+      
+      if (!targetStory) {
+        // Nếu không tìm thấy, mặc định là nhóm đầu tiên
+        setCurrentUserGroupIndex(0);
+        setCurrentStoryIndexInGroup(0);
+        return;
+      }
+      
+      // Tìm nhóm và vị trí của story trong nhóm
+      let foundGroupIndex = 0;
+      let foundStoryIndexInGroup = 0;
       
       for (let i = 0; i < userGroups.length; i++) {
-        const groupHasStory = userGroups[i].some(s => s._id === clickedStory._id);
-        if (groupHasStory) {
-          groupIndex = i;
+        const storyIndex = userGroups[i].findIndex(s => s._id === targetStory!._id);
+        if (storyIndex !== -1) {
+          foundGroupIndex = i;
+          foundStoryIndexInGroup = storyIndex;
           break;
         }
       }
       
-      setCurrentUserGroupIndex(groupIndex);
-      setCurrentStoryIndexInGroup(0);
+      setCurrentUserGroupIndex(foundGroupIndex);
+      setCurrentStoryIndexInGroup(foundStoryIndexInGroup);
     }
-  }, [visible, initialIndex]);
+  }, [visible, initialIndex, initialStoryId]);
 
   // Kiểm tra xem story có ảnh không
   const hasImage = currentStory?.images || 
