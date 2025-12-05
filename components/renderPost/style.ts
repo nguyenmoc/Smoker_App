@@ -1,6 +1,6 @@
-﻿import {Dimensions, StyleSheet} from 'react-native';
+﻿import { Dimensions, StyleSheet } from 'react-native';
 
-const {width: screenWidth} = Dimensions.get('window');
+const { width: screenWidth } = Dimensions.get('window');
 export const styles = StyleSheet.create({
     container: {
         flex: 1,
@@ -38,7 +38,7 @@ export const styles = StyleSheet.create({
         borderRadius: 12,
         shadowColor: '#000',
         shadowOpacity: 0.05,
-        shadowOffset: {width: 0, height: 2},
+        shadowOffset: { width: 0, height: 2 },
         shadowRadius: 8,
         elevation: 3,
     },
@@ -136,7 +136,7 @@ export const styles = StyleSheet.create({
         borderRadius: 12,
         shadowColor: '#000',
         shadowOpacity: 0.05,
-        shadowOffset: {width: 0, height: 2},
+        shadowOffset: { width: 0, height: 2 },
         shadowRadius: 8,
         elevation: 3,
     },
@@ -172,7 +172,7 @@ export const styles = StyleSheet.create({
         borderTopRightRadius: 20,
         height: '80%',
         shadowColor: '#000',
-        shadowOffset: {width: 0, height: -2},
+        shadowOffset: { width: 0, height: -2 },
         shadowOpacity: 0.25,
         shadowRadius: 10,
         elevation: 10,
@@ -273,5 +273,13 @@ export const styles = StyleSheet.create({
         color: '#1877f2',
         marginLeft: 8,
         fontWeight: '600',
+    },
+    repostCard: {
+        backgroundColor: '#ffffff',
+        borderWidth: 1,
+        borderColor: '#e5e7eb',
+        borderRadius: 10,
+        marginHorizontal: 8,
+        marginVertical: 8,
     },
 });

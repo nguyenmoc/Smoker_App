@@ -16,7 +16,7 @@ export interface User {
   facebook?: string;
   instagram?: string;
   entityAccountId: string;
-    type: string;
+  type: string;
 }
 
 export interface Like {
@@ -51,7 +51,8 @@ export interface Post {
   authorAvatar: string;
   accountId: string;
   authorName: string;
-    mediaIds: any[]
+  mediaIds: any[];
+  originalPost?: Post;
 }
 
 export interface CreatePostData {

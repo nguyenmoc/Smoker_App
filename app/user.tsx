@@ -1,10 +1,11 @@
-import RenderPost from "@/components/renderPost";
-import {useAuth} from '@/hooks/useAuth';
-import {useUserProfile} from '@/hooks/useUserProfile';
-import {MessageApiService} from '@/services/messageApi';
-import {Ionicons} from '@expo/vector-icons';
-import {useLocalSearchParams, useRouter} from 'expo-router';
-import React, {useRef, useState} from 'react';
+import { Index as RenderPost } from "@/components/renderPost";
+import { useAuth } from '@/hooks/useAuth';
+import { useUserProfile } from '@/hooks/useUserProfile';
+import { FeedApiService } from "@/services/feedApi";
+import { MessageApiService } from '@/services/messageApi';
+import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useRef } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -18,8 +19,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
-import {FeedApiService} from "@/services/feedApi";
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const {width: screenWidth} = Dimensions.get('window');
 const imageSize = (screenWidth - 32 - 8) / 3;
@@ -131,10 +131,8 @@ export default function User() {
 
                 <View style={styles.userInfo}>
                     <Text style={styles.userName}>{user?.name}</Text>
-                    <Text style={styles.userUsername}>{user?.username}</Text>
-                    {user?.bio && (
-                        <Text style={styles.userBio}>{user.bio}</Text>
-                    )}
+                    {user?.username && (<Text style={styles.userUsername}>{user?.username}</Text>)}
+                    {user?.bio && (<Text style={styles.userBio}>{user.bio}</Text>)}
                 </View>
 
                 {/*social media link*/}
@@ -278,41 +276,6 @@ export default function User() {
         );
     }
 
-    const showDataModal = async (item: any) => {
-        try {
-            let request = {
-                title: item.title,
-                content: item.content,
-                images: item.images,
-                videos: item.videos,
-                audios: "",
-                musicTitle: "",
-                artistName: "",
-                description: "",
-                hashTag: "",
-                musicPurchaseLink: "",
-                musicBackgroundImage: "",
-                type: item.type,
-                songId: item.songId,
-                musicId: item.musicId,
-                entityAccountId: accountId,
-                entityId: item.entityId,
-                entityType: item.entityType,
-                repostedFromId: item._id,
-                repostedFromType: item.type
-            }
-            const response = await feedApi.rePost(request);
-            if (response.success) {
-                Alert.alert('Thành công', 'Đã đăng lại bài viết');
-            } else {
-                Alert.alert('Lỗi', 'Không đăng lại bài viết');
-            }
-        } catch (error) {
-            console.log("error repost: ", error);
-            Alert.alert('Lỗi', 'Không đăng lại bài viết');
-        }
-    }
-
     return (
         <View style={styles.container}>
             <StatusBar barStyle="light-content" backgroundColor="transparent" translucent/>
@@ -328,8 +291,14 @@ export default function User() {
 
             <AnimatedFlatList
                 data={posts}
-                renderItem={({item}) => <RenderPost item={item} currentId={authState.currentId} token={authState.token}
-                                                    onAction={showDataModal}/>}
+                renderItem={({item}) =>
+                    <RenderPost
+                        item={item}
+                        currentId={authState.currentId}
+                        entityAccountId={authState.EntityAccountId}
+                        feedApi={feedApi}
+                    />
+                }
                 keyExtractor={(item: any) => item._id}
                 ListHeaderComponent={renderHeader}
                 showsVerticalScrollIndicator={false}
@@ -338,6 +307,9 @@ export default function User() {
                     {useNativeDriver: true}
                 )}
                 style={{paddingBottom: 20}}
+                ItemSeparatorComponent={() => (
+                    <View style={{ height: 8, backgroundColor: '#f0f2f5' }} />
+                )}
                 scrollEventThrottle={16}
                 ListEmptyComponent={
                     <View style={styles.emptyContainer}>
@@ -356,7 +328,6 @@ export default function User() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f9fafb',
     },
     header: {
         position: 'absolute',
@@ -425,7 +396,7 @@ const styles = StyleSheet.create({
     },
     headerContainer: {
         backgroundColor: '#fff',
-        marginBottom: 16,
+        marginBottom: 14,
     },
     coverContainer: {
         position: 'relative',
@@ -441,7 +412,7 @@ const styles = StyleSheet.create({
     avatarContainer: {
         alignItems: 'center',
         marginTop: -40,
-        marginBottom: 16,
+        marginBottom: 8,
     },
     avatar: {
         width: 80,
@@ -452,13 +423,12 @@ const styles = StyleSheet.create({
     },
     userInfo: {
         alignItems: 'center',
-        marginBottom: 20,
+        marginBottom: 14,
     },
     userName: {
         fontSize: 24,
         fontWeight: 'bold',
         color: '#111827',
-        marginBottom: 4,
     },
     userUsername: {
         fontSize: 16,
@@ -476,7 +446,6 @@ const styles = StyleSheet.create({
         borderTopWidth: 1,
         borderBottomWidth: 1,
         borderColor: '#e5e7eb',
-        marginBottom: 20,
     },
     statItem: {
         flex: 1,
@@ -495,7 +464,7 @@ const styles = StyleSheet.create({
     },
     actionButtons: {
         flexDirection: 'row',
-        marginBottom: 20,
+        paddingVertical: 14,
         gap: 12,
     },
     followButton: {
@@ -541,7 +510,7 @@ const styles = StyleSheet.create({
     postsHeader: {
         borderTopWidth: 1,
         borderTopColor: '#e5e7eb',
-        paddingTop: 16,
+        paddingVertical: 8,
     },
     postsHeaderItem: {
         flexDirection: 'row',

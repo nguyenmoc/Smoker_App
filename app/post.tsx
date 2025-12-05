@@ -24,6 +24,7 @@ import { PostMenu } from '@/components/post/PostMenu';
 import { useAuth } from '@/hooks/useAuth';
 import { usePostDetails } from '@/hooks/usePost';
 import {FeedApiService} from "@/services/feedApi";
+import {Index as RenderPost} from "@/components/renderPost";
 
 // Skeleton Loading Component
 const SkeletonLoader = () => {
@@ -62,15 +63,15 @@ const SkeletonLoader = () => {
             <Animated.View style={[styles.skeletonText, { width: 80, height: 12, marginTop: 6, opacity }]} />
           </View>
         </View>
-        
+
         {/* Skeleton Post Content */}
         <Animated.View style={[styles.skeletonText, { width: '100%', height: 16, marginTop: 16, opacity }]} />
         <Animated.View style={[styles.skeletonText, { width: '90%', height: 16, marginTop: 8, opacity }]} />
         <Animated.View style={[styles.skeletonText, { width: '70%', height: 16, marginTop: 8, opacity }]} />
-        
+
         {/* Skeleton Post Image */}
         <Animated.View style={[styles.skeletonImage, { opacity }]} />
-        
+
         {/* Skeleton Actions */}
         <View style={styles.skeletonActions}>
           <Animated.View style={[styles.skeletonButton, { opacity }]} />
@@ -82,7 +83,7 @@ const SkeletonLoader = () => {
       {/* Skeleton Comments Section */}
       <View style={styles.skeletonCommentsSection}>
         <Animated.View style={[styles.skeletonText, { width: 100, height: 18, marginBottom: 16, opacity }]} />
-        
+
         {[1, 2, 3].map((i) => (
           <View key={i} style={styles.skeletonComment}>
             <Animated.View style={[styles.skeletonCommentAvatar, { opacity }]} />
@@ -135,7 +136,6 @@ const feedApi = new FeedApiService(authState.token!);
 
   const handleSubmitComment = async () => {
     if (!commentText.trim() || !post) return;
-    
     setSubmittingComment(true);
     try {
       const success = await addComment(commentText.trim());
@@ -150,49 +150,6 @@ const feedApi = new FeedApiService(authState.token!);
     } finally {
       setSubmittingComment(false);
     }
-  };
-
-  const handleLikePost = () => {
-    if (post) {
-      likePost();
-    }
-  };
-
-  const handleShare = async (item: any) => {
-    if (!item) return;
-
-      try {
-          let request = {
-              title: item.title,
-              content: item.content,
-              images: item.images,
-              videos: item.videos,
-              audios: "",
-              musicTitle: "",
-              artistName: "",
-              description: "",
-              hashTag: "",
-              musicPurchaseLink: "",
-              musicBackgroundImage: "",
-              type: item.type,
-              songId: item.songId,
-              musicId: item.musicId,
-              entityAccountId: authState.EntityAccountId,
-              entityId: item.entityId,
-              entityType: item.entityType,
-              repostedFromId: item._id,
-              repostedFromType: item.type
-          }
-          const response = await feedApi.rePost(request);
-          if (response.success) {
-              Alert.alert('Thành công', 'Đã đăng lại bài viết');
-          } else {
-              Alert.alert('Lỗi', 'Không đăng lại bài viết');
-          }
-      } catch (error) {
-          console.log("error repost: ", error);
-          Alert.alert('Lỗi', 'Không đăng lại bài viết');
-      }
   };
 
   const handleUserPress = (userId: string) => {
@@ -330,8 +287,8 @@ const feedApi = new FeedApiService(authState.token!);
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={0}
       >
-        <ScrollView 
-          style={styles.scrollView} 
+        <ScrollView
+          style={styles.scrollView}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -342,12 +299,13 @@ const feedApi = new FeedApiService(authState.token!);
             />
           }
         >
-          <PostContent
-            post={post}
-            onUserPress={handleUserPress}
-            onLike={handleLikePost}
-            onShare={handleShare}
-          />
+            <RenderPost
+                item={post}
+                currentId={authState.currentId}
+                entityAccountId={authState.EntityAccountId}
+                feedApi={feedApi}
+                isDisable={true}
+            />
 
           <CommentsList
             comments={comments}
