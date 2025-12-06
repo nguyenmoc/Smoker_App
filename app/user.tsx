@@ -185,14 +185,36 @@ export default function User() {
                         <Text style={styles.statNumber}>{formatNumber(posts.length || 0)}</Text>
                         <Text style={styles.statLabel}>Bài viết</Text>
                     </View>
-                    <View style={styles.statItem}>
+                    <TouchableOpacity
+                        style={styles.statItem}
+                        onPress={() => {
+                            if (user?.entityAccountId) {
+                                router.push({
+                                    pathname: '/follow',
+                                    params: { type: 'followers', userId: user.entityAccountId },
+                                });
+                            }
+                        }}
+                        activeOpacity={0.7}
+                    >
                         <Text style={styles.statNumber}>{formatNumber(followers.length || 0)}</Text>
                         <Text style={styles.statLabel}>Người theo dõi</Text>
-                    </View>
-                    <View style={styles.statItem}>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={styles.statItem}
+                        onPress={() => {
+                            if (user?.entityAccountId) {
+                                router.push({
+                                    pathname: '/follow',
+                                    params: { type: 'following', userId: user.entityAccountId },
+                                });
+                            }
+                        }}
+                        activeOpacity={0.7}
+                    >
                         <Text style={styles.statNumber}>{formatNumber(following.length || 0)}</Text>
                         <Text style={styles.statLabel}>Đang theo dõi</Text>
-                    </View>
+                    </TouchableOpacity>
                 </View>
 
                 {user?.entityAccountId !== accountId && (
@@ -296,9 +318,9 @@ export default function User() {
                 songId: item.songId,
                 musicId: item.musicId,
                 entityAccountId: accountId,
-                entityId: item.entityId,
-                entityType: item.entityType,
-                repostedFromId: item._id,
+                entityId: item.author?.entityId || item.entityId,
+                entityType: item.author?.entityType || item.entityType,
+                repostedFromId: item.id || item._id,
                 repostedFromType: item.type
             }
             const response = await feedApi.rePost(request);
@@ -328,9 +350,9 @@ export default function User() {
 
             <AnimatedFlatList
                 data={posts}
-                renderItem={({item}) => <RenderPost item={item} currentId={authState.currentId} token={authState.token}
+                renderItem={({item}) => <RenderPost item={item} currentId={authState.currentId} currentEntityAccountId={authState.EntityAccountId} token={authState.token}
                                                     onAction={showDataModal}/>}
-                keyExtractor={(item: any) => item._id}
+                keyExtractor={(item: any) => item.id ?? item._id}
                 ListHeaderComponent={renderHeader}
                 showsVerticalScrollIndicator={false}
                 onScroll={Animated.event(

@@ -29,11 +29,8 @@ export const usePostDetails = (postId: string) => {
       if (postResponse.success && postResponse.data) {
         setPost(postResponse.data);
         
-        // Cập nhật comments ngay sau khi có data
-        if (postResponse.data.comments) {
-          const commentList = Object.values(postResponse.data.comments);
-          setComments(commentList);
-        }
+        // Backend trả về comments là array trong DTO
+        setComments(postResponse.data.comments || []);
       } else {
         setError('Không tìm thấy bài viết');
       }
@@ -54,12 +51,12 @@ export const usePostDetails = (postId: string) => {
       content,
       accountId: authState.currentId!!,
       entityAccountId: authState.EntityAccountId!!,
-      entityId: post.entityId,
-      entityType: post.entityType,
+      entityId: post.author?.entityId ?? post.entityId,
+      entityType: post.author?.entityType ?? post.entityType,
     };
 
     try {
-      const response = await feedApi.createComment(commentData, post._id);
+      const response = await feedApi.createComment(commentData, post.id ?? post._id);
 
       if (response.success && response.data) {
         setTimeout(() => {
@@ -77,7 +74,160 @@ export const usePostDetails = (postId: string) => {
   };
 
   const likeComment = async (commentId: string) => {
-    // Implementation here
+    if (!post || !authState.currentId) return;
+
+    const postId = post.id || post._id;
+    if (!postId) return;
+
+    // Optimistic update
+    setComments(prevComments => {
+      return prevComments.map(comment => {
+        if ((comment.id || comment._id) === commentId) {
+          const currentIsLiked = comment.stats?.isLikedByMe ?? false;
+          return {
+            ...comment,
+            stats: {
+              ...comment.stats,
+              likeCount: currentIsLiked 
+                ? Math.max(0, (comment.stats?.likeCount || 0) - 1)
+                : (comment.stats?.likeCount || 0) + 1,
+              isLikedByMe: !currentIsLiked,
+              replyCount: comment.stats?.replyCount || 0,
+            }
+          };
+        }
+        return comment;
+      });
+    });
+
+    try {
+      const response = await feedApi.likeComment(postId, commentId);
+      if (!response.success) {
+        fetchPostDetails(true);
+      }
+    } catch (err) {
+      console.error('Error liking comment:', err);
+      fetchPostDetails(true);
+    }
+  };
+
+  const addReply = async (commentId: string, replyId: string | undefined, content: string) => {
+    if (!post || !authState.currentId || !authState.EntityAccountId) return false;
+
+    const postId = post.id || post._id;
+    if (!postId) return false;
+
+    const replyData = {
+      content,
+      accountId: authState.currentId,
+      entityAccountId: authState.EntityAccountId,
+      entityId: post.author?.entityId || post.entityId,
+      entityType: post.author?.entityType || post.entityType,
+    };
+
+    try {
+      let response;
+      if (replyId) {
+        response = await feedApi.addReplyToReply(postId, commentId, replyId, replyData);
+      } else {
+        response = await feedApi.addReply(postId, commentId, replyData);
+      }
+
+      if (response.success) {
+        setTimeout(() => {
+          fetchPostDetails(true);
+        }, 100);
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error('Error adding reply:', err);
+      return false;
+    }
+  };
+
+  const likeReply = async (commentId: string, replyId: string) => {
+    if (!post || !authState.currentId) return;
+
+    const postId = post.id || post._id;
+    if (!postId) return;
+
+    // Optimistic update
+    setComments(prevComments => {
+      return prevComments.map(comment => {
+        if ((comment.id || comment._id) === commentId) {
+          const updatedReplies = comment.replies.map(reply => {
+            if (reply.id === replyId) {
+              const currentIsLiked = reply.stats.isLikedByMe;
+              return {
+                ...reply,
+                stats: {
+                  likeCount: currentIsLiked 
+                    ? Math.max(0, reply.stats.likeCount - 1)
+                    : reply.stats.likeCount + 1,
+                  isLikedByMe: !currentIsLiked,
+                }
+              };
+            }
+            return reply;
+          });
+
+          return {
+            ...comment,
+            replies: updatedReplies,
+          };
+        }
+        return comment;
+      });
+    });
+
+    try {
+      const response = await feedApi.likeReply(postId, commentId, replyId);
+      if (!response.success) {
+        fetchPostDetails(true);
+      }
+    } catch (err) {
+      console.error('Error liking reply:', err);
+      fetchPostDetails(true);
+    }
+  };
+
+  const updateReply = async (commentId: string, replyId: string, content: string): Promise<boolean> => {
+    if (!post) return false;
+
+    const postId = post.id || post._id;
+    if (!postId) return false;
+
+    try {
+      const response = await feedApi.updateReply(postId, commentId, replyId, { content });
+      if (response.success) {
+        fetchPostDetails(true);
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error('Error updating reply:', err);
+      return false;
+    }
+  };
+
+  const deleteReply = async (commentId: string, replyId: string): Promise<boolean> => {
+    if (!post) return false;
+
+    const postId = post.id || post._id;
+    if (!postId) return false;
+
+    try {
+      const response = await feedApi.deleteReply(postId, commentId, replyId);
+      if (response.success) {
+        fetchPostDetails(true);
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error('Error deleting reply:', err);
+      return false;
+    }
   };
 
   const likePost = useCallback(async () => {
@@ -87,7 +237,7 @@ export const usePostDetails = (postId: string) => {
     if (!currentUserId) return;
 
     // Tính trạng thái đã like hay chưa
-    const isLiked = !!Object.values(post.likes || {}).find(
+    const currentIsLiked = post.stats?.isLikedByMe ?? !!Object.values(post.likes || {}).find(
       like => like.accountId === currentUserId
     );
 
@@ -96,7 +246,7 @@ export const usePostDetails = (postId: string) => {
       if (!prevPost) return prevPost;
 
       const updatedLikes = { ...prevPost.likes };
-      if (isLiked) {
+      if (currentIsLiked) {
         // unlike
         for (const key in updatedLikes) {
           if (updatedLikes[key].accountId === currentUserId) {
@@ -112,7 +262,23 @@ export const usePostDetails = (postId: string) => {
         };
       }
 
-      return { ...prevPost, likes: updatedLikes };
+      return {
+        ...prevPost,
+        stats: prevPost.stats ? {
+          ...prevPost.stats,
+          likeCount: currentIsLiked 
+            ? Math.max(0, (prevPost.stats.likeCount || 0) - 1)
+            : (prevPost.stats.likeCount || 0) + 1,
+          isLikedByMe: !currentIsLiked
+        } : {
+          likeCount: currentIsLiked ? 0 : 1,
+          commentCount: prevPost.stats?.commentCount ?? 0,
+          shareCount: prevPost.stats?.shareCount ?? 0,
+          viewCount: prevPost.stats?.viewCount ?? 0,
+          isLikedByMe: !currentIsLiked
+        },
+        likes: updatedLikes
+      };
     });
 
     // Gọi API
@@ -133,7 +299,15 @@ export const usePostDetails = (postId: string) => {
       const response = await feedApi.updatePost(postId, data);
 
       if (response.success && response.data) {
-        setPost(prevPost => prevPost ? { ...prevPost, content: response.data!.content } : null);
+        setPost(prevPost => {
+          if (!prevPost) return null;
+          const updated = { ...prevPost, content: response.data!.content };
+          // Ensure stats are preserved
+          if (prevPost.stats) {
+            updated.stats = prevPost.stats;
+          }
+          return updated;
+        });
         return true;
       }
       return false;
@@ -174,5 +348,9 @@ export const usePostDetails = (postId: string) => {
     likePost,
     updatePost,
     deletePost,
+    addReply,
+    likeReply,
+    updateReply,
+    deleteReply,
   };
 };

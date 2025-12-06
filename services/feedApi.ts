@@ -1,7 +1,7 @@
-import {CreateCommentData, CreatePostData, Post, User} from "@/constants/feedData";
-import {CommentData} from "@/types/commentType";
-import {PostData} from "@/types/postType";
-import {API_CONFIG} from "./apiConfig";
+import { CreateCommentData, CreatePostData, Post, User } from "@/constants/feedData";
+import { CommentData } from "@/types/commentType";
+import { PostData } from "@/types/postType";
+import { API_CONFIG } from "./apiConfig";
 
 interface ApiResponse<T> {
     success: boolean;
@@ -67,7 +67,7 @@ export class FeedApiService {
     }
 
     async getFeedPosts(page: number = 1, limit: number = 10): Promise<ApiResponse<Post[]>> {
-        return this.makeRequest<Post[]>(`/posts?page=${page}&limit=${limit}&includeMedias=true`);
+        return this.makeRequest<Post[]>(`/posts?page=${page}&limit=${limit}&includeMedias=true&includeMusic=true`);
     }
 
     async uploadPostMedia(files: { uri: string; type: 'image' | 'video' }[]): Promise<ApiResponse<Array<{
@@ -140,7 +140,7 @@ export class FeedApiService {
     }
 
     async getPostDetails(postId: string): Promise<ApiResponse<PostData>> {
-        return this.makeRequest<PostData>(`/posts/${postId}?includeMedias=true`);
+        return this.makeRequest<PostData>(`/posts/${postId}?includeMedias=true&includeMusic=true`);
     }
 
     async updatePost(postId: string, postData: { content: string }): Promise<ApiResponse<Post>> {
@@ -167,9 +167,48 @@ export class FeedApiService {
         });
     }
 
-    async likeComment(commentId: string): Promise<ApiResponse<{ liked: boolean; likesCount: number }>> {
-        return this.makeRequest<{ liked: boolean; likesCount: number }>(`/comments/${commentId}/like`, {
+    async likeComment(postId: string, commentId: string): Promise<ApiResponse<{ liked: boolean; likesCount: number }>> {
+        return this.makeRequest<{ liked: boolean; likesCount: number }>(`/posts/${postId}/comments/${commentId}/like`, {
             method: 'POST',
+        });
+    }
+
+    async addReply(postId: string, commentId: string, replyData: any): Promise<ApiResponse<any>> {
+        return this.makeRequest<any>(`/posts/${postId}/comments/${commentId}/replies`, {
+            method: 'POST',
+            body: JSON.stringify(replyData),
+        });
+    }
+
+    async addReplyToReply(postId: string, commentId: string, replyId: string, replyData: any): Promise<ApiResponse<any>> {
+        return this.makeRequest<any>(`/posts/${postId}/comments/${commentId}/replies/${replyId}`, {
+            method: 'POST',
+            body: JSON.stringify(replyData),
+        });
+    }
+
+    async likeReply(postId: string, commentId: string, replyId: string): Promise<ApiResponse<{ liked: boolean }>> {
+        return this.makeRequest<{ liked: boolean }>(`/posts/${postId}/comments/${commentId}/replies/${replyId}/like`, {
+            method: 'POST',
+        });
+    }
+
+    async unlikeReply(postId: string, commentId: string, replyId: string): Promise<ApiResponse<{ liked: boolean }>> {
+        return this.makeRequest<{ liked: boolean }>(`/posts/${postId}/comments/${commentId}/replies/${replyId}/like`, {
+            method: 'DELETE',
+        });
+    }
+
+    async updateReply(postId: string, commentId: string, replyId: string, data: { content: string }): Promise<ApiResponse<any>> {
+        return this.makeRequest<any>(`/posts/${postId}/comments/${commentId}/replies/${replyId}`, {
+            method: 'PUT',
+            body: JSON.stringify(data),
+        });
+    }
+
+    async deleteReply(postId: string, commentId: string, replyId: string): Promise<ApiResponse<null>> {
+        return this.makeRequest<null>(`/posts/${postId}/comments/${commentId}/replies/${replyId}`, {
+            method: 'DELETE',
         });
     }
 
@@ -182,7 +221,7 @@ export class FeedApiService {
     }
 
     async getUserPosts(accountId: string): Promise<ApiResponse<Post[]>> {
-        return this.makeRequest<Post[]>(`/posts/author/${accountId}`,{method: 'GET'});
+        return this.makeRequest<Post[]>(`/posts/author/${accountId}?includeMedias=true&includeMusic=true`,{method: 'GET'});
     }
 
     async getFollowers(accountId: string): Promise<ApiResponse<Post[]>> {
