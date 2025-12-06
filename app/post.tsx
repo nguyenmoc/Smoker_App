@@ -2,28 +2,27 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Alert,
-  Animated,
-  KeyboardAvoidingView,
-  Platform,
-  RefreshControl,
-  ScrollView,
-  Share,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    Alert,
+    Animated,
+    KeyboardAvoidingView,
+    Platform,
+    RefreshControl,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 
 import { CommentInput } from '@/components/post/CommentInput';
 import { CommentsList } from '@/components/post/CommentsList';
 import { EditPostModal } from '@/components/post/EditPostModal';
-import { PostContent } from '@/components/post/PostContent';
 import { PostMenu } from '@/components/post/PostMenu';
+import RenderPost from '@/components/renderPost';
 import { useAuth } from '@/hooks/useAuth';
 import { usePostDetails } from '@/hooks/usePost';
-import {FeedApiService} from "@/services/feedApi";
+import { FeedApiService } from "@/services/feedApi";
 
 // Skeleton Loading Component
 const SkeletonLoader = () => {
@@ -111,12 +110,15 @@ export default function PostDetailScreen() {
     deletePost,
     updatePost,
     fetchPostDetails,
+    addReply,
+    likeReply,
   } = usePostDetails(id!);
   const { authState } = useAuth();
   const currentUserId = authState.currentId;
 
   const [commentText, setCommentText] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<{ commentId: string; replyId?: string; authorName: string } | null>(null);
   const [isMenuVisible, setIsMenuVisible] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
   const [isEditing, setIsEditing] = useState(false);
@@ -138,23 +140,23 @@ const feedApi = new FeedApiService(authState.token!);
     
     setSubmittingComment(true);
     try {
-      const success = await addComment(commentText.trim());
+      let success = false;
+      if (replyingTo) {
+        success = await addReply(replyingTo.commentId, replyingTo.replyId, commentText.trim());
+      } else {
+        success = await addComment(commentText.trim());
+      }
 
       if (success) {
         setCommentText('');
+        setReplyingTo(null);
       } else {
-        Alert.alert('Lỗi', 'Không thể gửi bình luận');
+        Alert.alert('Lỗi', replyingTo ? 'Không thể gửi phản hồi' : 'Không thể gửi bình luận');
       }
     } catch (error) {
-      Alert.alert('Lỗi', 'Không thể gửi bình luận');
+      Alert.alert('Lỗi', replyingTo ? 'Không thể gửi phản hồi' : 'Không thể gửi bình luận');
     } finally {
       setSubmittingComment(false);
-    }
-  };
-
-  const handleLikePost = () => {
-    if (post) {
-      likePost();
     }
   };
 
@@ -178,9 +180,9 @@ const feedApi = new FeedApiService(authState.token!);
               songId: item.songId,
               musicId: item.musicId,
               entityAccountId: authState.EntityAccountId,
-              entityId: item.entityId,
-              entityType: item.entityType,
-              repostedFromId: item._id,
+              entityId: item.author?.entityId || item.entityId,
+              entityType: item.author?.entityType || item.entityType,
+              repostedFromId: item.id || item._id,
               repostedFromType: item.type
           }
           const response = await feedApi.rePost(request);
@@ -282,7 +284,7 @@ const feedApi = new FeedApiService(authState.token!);
     );
   }
 
-  const isPostOwner = post.accountId === currentUserId;
+  const isPostOwner = (post.author?.entityAccountId || post.accountId) === currentUserId;
 
   return (
     <View style={styles.container}>
@@ -342,17 +344,28 @@ const feedApi = new FeedApiService(authState.token!);
             />
           }
         >
-          <PostContent
-            post={post}
-            onUserPress={handleUserPress}
-            onLike={handleLikePost}
-            onShare={handleShare}
-          />
+          {post && (
+            <RenderPost
+              item={post}
+              currentId={currentUserId || ''}
+              currentEntityAccountId={authState.EntityAccountId}
+              token={authState.token || ''}
+              onAction={(data) => {
+                if (data.repostContent !== undefined) {
+                  handleShare(data);
+                }
+              }}
+            />
+          )}
 
           <CommentsList
             comments={comments}
             onUserPress={handleUserPress}
             onLikeComment={likeComment}
+            onReply={(commentId, replyId, authorName) => {
+              setReplyingTo({ commentId, replyId, authorName: authorName || 'Người dùng' });
+            }}
+            onLikeReply={likeReply}
           />
         </ScrollView>
 
@@ -361,6 +374,8 @@ const feedApi = new FeedApiService(authState.token!);
           onChange={setCommentText}
           onSubmit={handleSubmitComment}
           submitting={submittingComment}
+          replyingTo={replyingTo}
+          onCancelReply={() => setReplyingTo(null)}
         />
       </KeyboardAvoidingView>
     </View>

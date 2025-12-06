@@ -1,4 +1,5 @@
 import { CommentData } from "@/types/commentType";
+import { Author, PostStats, TopComment, OriginalPost, AnonymousIdentityMap, MediaItem, Like } from "@/types/postType";
 
 export interface User {
   _id: string;
@@ -19,11 +20,6 @@ export interface User {
     type: string;
 }
 
-export interface Like {
-  accountId: string;
-  TypeRole: string;
-}
-
 export interface Comment {
   id: string;
   userId: string;
@@ -36,22 +32,41 @@ export interface Comment {
 }
 
 export interface Post {
-  _id: string;
-  // userId: string;
-  // user: User;
+  // Primary ID (new format)
+  id?: string;
+  // Legacy ID (backward compatibility)
+  _id?: string;
+  
   content: string;
-  images: string;
-  likes: Record<string, Like>;
-  // isLiked: boolean;
-  comments: Record<string, CommentData>;
-  // commentsCount: number;
-  // shares: number;
+  images?: string;
+  
+  // Stats (new format)
+  stats?: PostStats;
+  // Legacy likes & comments (backward compatibility)
+  likes?: Record<string, Like>;
+  comments?: Record<string, CommentData>;
+  
   createdAt: string;
-  // location?: string;
-  authorAvatar: string;
-  accountId: string;
-  authorName: string;
-    mediaIds: any[]
+  
+  // Author info (new format)
+  author?: Author;
+  // Legacy author info (backward compatibility)
+  authorAvatar?: string;
+  accountId?: string;
+  authorName?: string;
+  
+  // Media
+  mediaIds?: MediaItem[];
+  medias?: MediaItem[];
+  
+  // Top comments (new format)
+  topComments?: TopComment[];
+  
+  // Original post for reposts
+  originalPost?: OriginalPost;
+  
+  // Anonymous identity map
+  anonymousIdentityMap?: AnonymousIdentityMap;
 }
 
 export interface CreatePostData {

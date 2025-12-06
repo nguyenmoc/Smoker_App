@@ -1,5 +1,6 @@
 import { Post } from '@/constants/feedData';
 import { useAuth } from '@/hooks/useAuth';
+import { formatTime } from "@/utils/extension";
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import {
@@ -10,7 +11,6 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import {formatTime} from "@/utils/extension";
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -30,14 +30,12 @@ export const PostContent: React.FC<PostContentProps> = ({
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const { authState } = useAuth();
   const currentUserId = authState.currentId;
-  const likeCount = Object.keys(post.likes || {}).length;
-  const commentCount = Object.keys(post.comments || {}).length;
-    const images = post.mediaIds.map(x => x.url);
+  const likeCount = post.stats?.likeCount ?? 0;
+  const commentCount = post.stats?.commentCount ?? 0;
+  const images = (post.medias ?? post.mediaIds ?? []).map(x => x.url);
 
   // Kiểm tra user hiện tại đã like chưa
-  const isLiked = currentUserId
-    ? Object.values(post.likes || {}).some(like => like.accountId === currentUserId)
-    : false;
+  const isLiked = post.stats?.isLikedByMe ?? false;
 
   const handleImageScroll = (event: any) => {
     const contentOffsetX = event.nativeEvent.contentOffset.x;
@@ -48,12 +46,12 @@ export const PostContent: React.FC<PostContentProps> = ({
   return (
     <View style={styles.postContainer}>
       <View style={styles.postHeader}>
-        <TouchableOpacity onPress={() => onUserPress(post.accountId)}>
-          <Image source={{ uri: post.authorAvatar }} style={styles.userAvatar} />
+        <TouchableOpacity onPress={() => onUserPress(post.author?.entityAccountId ?? post.accountId)}>
+          <Image source={{ uri: post.author?.avatar ?? post.authorAvatar }} style={styles.userAvatar} />
         </TouchableOpacity>
         <View style={styles.userInfo}>
-          <TouchableOpacity onPress={() => onUserPress(post.accountId)}>
-            <Text style={styles.userName}>{post.authorName}</Text>
+          <TouchableOpacity onPress={() => onUserPress(post.author?.entityAccountId ?? post.accountId)}>
+            <Text style={styles.userName}>{post.author?.name ?? post.authorName}</Text>
           </TouchableOpacity>
           <Text style={styles.postTime}>
             {formatTime(post.createdAt)}
@@ -71,7 +69,7 @@ export const PostContent: React.FC<PostContentProps> = ({
             horizontal
             pagingEnabled
             showsHorizontalScrollIndicator={false}
-            keyExtractor={(image, index) => `${post._id}-image-${index}`}
+            keyExtractor={(image, index) => `${post.id ?? post._id}-image-${index}`}
             renderItem={({ item: image }) => (
               <View style={styles.imageContainer}>
                 <Image

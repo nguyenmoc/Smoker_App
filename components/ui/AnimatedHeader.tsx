@@ -48,9 +48,7 @@ const AnimatedHeader: React.FC<AnimatedHeaderProps> = ({
             )}
           </View>
           {rightElement ? (
-            <TouchableOpacity style={styles.iconButton} onPress={onIconPress} activeOpacity={0.8}>
-              {rightElement}
-            </TouchableOpacity>
+            rightElement
           ) : iconName ? (
             <TouchableOpacity style={styles.iconButton} onPress={onIconPress} activeOpacity={0.8}>
               <Ionicons name={iconName} size={24} color="#fff" />

@@ -3,12 +3,11 @@ import { FeedApiService } from "@/services/feedApi";
 import { CreateStoryData } from '@/types/storyType';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
     Image,
-    Keyboard,
     KeyboardAvoidingView,
     Modal,
     Platform,
@@ -43,22 +42,7 @@ export const CreateStoryModal: React.FC<CreateStoryModalProps> = ({
         type: string;
         name: string;
     } | null>(null);
-    const [keyboardVisible, setKeyboardVisible] = useState(false);
     const { authState } = useAuth();
-
-    useEffect(() => {
-        const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => {
-            setKeyboardVisible(true);
-        });
-        const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
-            setKeyboardVisible(false);
-        });
-
-        return () => {
-            keyboardDidShowListener?.remove();
-            keyboardDidHideListener?.remove();
-        };
-    }, []);
 
     const pickImage = async () => {
         try {
@@ -92,17 +76,31 @@ export const CreateStoryModal: React.FC<CreateStoryModalProps> = ({
             Alert.alert('Thông báo', 'Vui lòng nhập nội dung hoặc chọn ảnh');
             return;
         }
-        let files: { uri: string; type: "image" | "video" }[] = [
-            {
-                uri: selectedImage?.uri!,
-                type: selectedImage?.type === "image/jpeg" ? "image" : "video"
-            }
-        ];
 
-        let imageUrl;
+        let imageUrl: string | undefined;
         if (selectedImage) {
-            const feedApi = await (new FeedApiService(authState.token!).uploadPostMedia(files))
-            imageUrl = feedApi.data[0].url;
+            try {
+                const files: { uri: string; type: "image" | "video" }[] = [
+                    {
+                        uri: selectedImage.uri,
+                        type: selectedImage.type === "image/jpeg" ? "image" : "video"
+                    }
+                ];
+
+                const feedApi = new FeedApiService(authState.token!);
+                const response = await feedApi.uploadPostMedia(files);
+                
+                if (response.success && response.data && response.data.length > 0) {
+                    imageUrl = response.data[0].url;
+                } else {
+                    Alert.alert('Lỗi', 'Không thể upload ảnh. Vui lòng thử lại.');
+                    return;
+                }
+            } catch (error) {
+                console.error('Error uploading image:', error);
+                Alert.alert('Lỗi', 'Không thể upload ảnh. Vui lòng thử lại.');
+                return;
+            }
         }
 
         const now = new Date();
@@ -122,7 +120,6 @@ export const CreateStoryModal: React.FC<CreateStoryModalProps> = ({
     const handleClose = () => {
         setContent('');
         setSelectedImage(null);
-        setKeyboardVisible(false);
         onClose();
     };
 

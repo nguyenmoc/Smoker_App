@@ -1,13 +1,14 @@
-import {ProfileHeader} from '@/components/ProfileHeader';
+import { ProfileHeader } from '@/components/ProfileHeader';
 import RenderPost from "@/components/renderPost";
-import {SidebarMenu} from '@/components/SidebarMenu';
-import {fieldLabels} from '@/constants/profileData';
-import {useAuth} from '@/hooks/useAuth';
-import {useProfile} from '@/hooks/useProfile';
-import {Ionicons} from '@expo/vector-icons';
+import { SidebarMenu } from '@/components/SidebarMenu';
+import { fieldLabels } from '@/constants/profileData';
+import { useAuth } from '@/hooks/useAuth';
+import { useProfile } from '@/hooks/useProfile';
+import { FeedApiService } from "@/services/feedApi";
+import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import {useRouter} from 'expo-router';
-import React, {useCallback, useRef, useState} from 'react';
+import { useRouter } from 'expo-router';
+import { useCallback, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -26,22 +27,31 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {FeedApiService} from "@/services/feedApi";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const {width: screenWidth} = Dimensions.get('window');
 const PHOTO_SIZE = (screenWidth - 4) / 3;
 
 const getAllPhotos = (posts: any[]) => {
+    if (!posts || !Array.isArray(posts)) {
+        return [];
+    }
+    
     const photos: any[] = [];
     posts.forEach((post) => {
-        post.mediaIds.forEach((image: any) => {
-            photos.push({
-                id: `${post.id}-${image}`,
-                uri: image.url,
-                postId: post.id,
+        // Sử dụng medias (format mới) hoặc mediaIds (format cũ)
+        const mediaItems = post.medias ?? post.mediaIds ?? [];
+        if (Array.isArray(mediaItems)) {
+            mediaItems.forEach((image: any) => {
+                if (image && image.url) {
+                    photos.push({
+                        id: `${post.id ?? post._id ?? ''}-${image.id ?? image._id ?? ''}`,
+                        uri: image.url,
+                        postId: post.id ?? post._id,
+                    });
+                }
             });
-        });
+        }
     });
     return photos;
 };
@@ -80,12 +90,13 @@ export default function ProfileScreen() {
     const [imageLoading, setImageLoading] = useState<'avatar' | 'coverImage' | null>(null);
     const [activeTab, setActiveTab] = useState<TabType>('info');
     const [menuVisible, setMenuVisible] = useState(false);
+    const [logoutModalVisible, setLogoutModalVisible] = useState(false);
 
     const scrollY = useRef(new Animated.Value(0)).current;
     const menuAnimation = useRef(new Animated.Value(-320)).current;
     const [refreshing, setRefreshing] = useState(false);
 
-    const allPhotos = getAllPhotos(posts);
+    const allPhotos = getAllPhotos(posts || []);
     const accountId = authState.EntityAccountId;
     const feedApi = new FeedApiService(authState.token!)
 
@@ -115,17 +126,13 @@ export default function ProfileScreen() {
     const handleLogout = () => {
         toggleMenu();
         setTimeout(() => {
-            Alert.alert('Đăng xuất', 'Bạn có chắc chắn muốn đăng xuất?', [
-                {text: 'Hủy', style: 'cancel'},
-                {
-                    text: 'Đăng xuất',
-                    style: 'destructive',
-                    onPress: () => {
-                        logout();
-                    },
-                },
-            ]);
+            setLogoutModalVisible(true);
         }, 300);
+    };
+
+    const confirmLogout = () => {
+        setLogoutModalVisible(false);
+        logout();
     };
 
     const handlePostPress = (postId: string) => {
@@ -133,16 +140,18 @@ export default function ProfileScreen() {
     };
 
     const handleFollowersPress = () => {
+        if (!accountId) return;
         router.push({
             pathname: '/follow',
-            params: {type: 'followers', userId: '1'},
+            params: {type: 'followers', userId: accountId},
         });
     };
 
     const handleFollowingPress = () => {
+        if (!accountId) return;
         router.push({
             pathname: '/follow',
-            params: {type: 'following', userId: '1'},
+            params: {type: 'following', userId: accountId},
         });
     };
 
@@ -292,9 +301,12 @@ export default function ProfileScreen() {
     }
     const showDataModal = async (item: any) => {
         try {
+            // Sử dụng repostContent nếu có (từ modal), nếu không thì dùng content gốc
+            const repostContent = item.repostContent || item.content || '';
+            
             let request = {
-                title: item.title,
-                content: item.content,
+                title: item.title || '',
+                content: repostContent,
                 images: item.images,
                 videos: item.videos,
                 audios: "",
@@ -308,14 +320,16 @@ export default function ProfileScreen() {
                 songId: item.songId,
                 musicId: item.musicId,
                 entityAccountId: accountId,
-                entityId: item.entityId,
-                entityType: item.entityType,
-                repostedFromId: item._id,
+                entityId: item.author?.entityId || item.entityId,
+                entityType: item.author?.entityType || item.entityType,
+                repostedFromId: item.id || item._id,
                 repostedFromType: item.type
             }
             const response = await feedApi.rePost(request);
             if (response.success) {
                 Alert.alert('Thành công', 'Đã đăng lại bài viết');
+                // Refresh profile để hiển thị bài viết mới
+                await fetchProfile();
             } else {
                 Alert.alert('Lỗi', 'Không đăng lại bài viết');
             }
@@ -390,8 +404,8 @@ export default function ProfileScreen() {
                 <Animated.FlatList
                     key="posts-list"
                     data={posts}
-                    renderItem={({item}) => <RenderPost item={item} currentId={authState.currentId} token={authState.token} onAction={showDataModal}/>}
-                    keyExtractor={(item) => item._id}
+                    renderItem={({item}) => <RenderPost item={item} currentId={authState.currentId} currentEntityAccountId={authState.EntityAccountId} token={authState.token} onAction={showDataModal}/>}
+                    keyExtractor={(item) => item.id ?? item._id ?? ''}
                     ListHeaderComponent={
                         <ProfileHeader
                             profile={profile}
@@ -432,7 +446,7 @@ export default function ProfileScreen() {
                     key="photos-grid"
                     data={allPhotos}
                     renderItem={renderPhotoItem}
-                    keyExtractor={(item) => item.id}
+                    keyExtractor={(item) => item.id ?? ''}
                     numColumns={3}
                     ListHeaderComponent={
                         <ProfileHeader
@@ -509,6 +523,40 @@ export default function ProfileScreen() {
                         </ScrollView>
                     </View>
                 </KeyboardAvoidingView>
+            </Modal>
+
+            
+            <Modal
+                visible={logoutModalVisible}
+                animationType="fade"
+                transparent={true}
+                onRequestClose={() => setLogoutModalVisible(false)}
+            >
+                <View style={styles.logoutModalOverlay}>
+                    <View style={styles.logoutModalContent}>
+                        <View style={styles.logoutModalIcon}>
+                            <Ionicons name="log-out-outline" size={48} color="#ef4444" />
+                        </View>
+                        <Text style={styles.logoutModalTitle}>Đăng xuất</Text>
+                        <Text style={styles.logoutModalMessage}>
+                            Bạn có chắc chắn muốn đăng xuất?
+                        </Text>
+                        <View style={styles.logoutModalButtons}>
+                            <TouchableOpacity
+                                style={[styles.logoutModalButton, styles.logoutModalButtonCancel]}
+                                onPress={() => setLogoutModalVisible(false)}
+                            >
+                                <Text style={styles.logoutModalButtonCancelText}>Hủy</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.logoutModalButton, styles.logoutModalButtonConfirm]}
+                                onPress={confirmLogout}
+                            >
+                                <Text style={styles.logoutModalButtonConfirmText}>Đăng xuất</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
             </Modal>
         </View>
     );
@@ -739,5 +787,66 @@ const styles = StyleSheet.create({
         marginTop: 8,
         textAlign: 'center',
         lineHeight: 20,
+    },
+    // Logout Modal styles
+    logoutModalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    logoutModalContent: {
+        backgroundColor: '#fff',
+        borderRadius: 16,
+        padding: 24,
+        width: '85%',
+        maxWidth: 400,
+        alignItems: 'center',
+    },
+    logoutModalIcon: {
+        marginBottom: 16,
+    },
+    logoutModalTitle: {
+        fontSize: 20,
+        fontWeight: '600',
+        color: '#111827',
+        marginBottom: 8,
+    },
+    logoutModalMessage: {
+        fontSize: 16,
+        color: '#6b7280',
+        textAlign: 'center',
+        marginBottom: 24,
+    },
+    logoutModalButtons: {
+        flexDirection: 'row',
+        width: '100%',
+        gap: 12,
+    },
+    logoutModalButton: {
+        flex: 1,
+        paddingVertical: 12,
+        paddingHorizontal: 24,
+        borderRadius: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    logoutModalButtonCancel: {
+        backgroundColor: '#f3f4f6',
+        borderWidth: 1,
+        borderColor: '#e5e7eb',
+    },
+    logoutModalButtonCancelText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#374151',
+    },
+    logoutModalButtonConfirm: {
+        backgroundColor: '#ef4444',
+    },
+    logoutModalButtonConfirmText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#fff',
     },
 });

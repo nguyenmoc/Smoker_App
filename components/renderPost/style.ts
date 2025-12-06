@@ -1,4 +1,4 @@
-﻿import {Dimensions, StyleSheet} from 'react-native';
+﻿import { Dimensions, StyleSheet } from 'react-native';
 
 const {width: screenWidth} = Dimensions.get('window');
 export const styles = StyleSheet.create({
@@ -84,6 +84,24 @@ export const styles = StyleSheet.create({
     postImage: {
         width: screenWidth - 16,
         height: 250,
+    },
+    videoContainer: {
+        width: screenWidth - 16,
+        height: 250,
+        backgroundColor: '#000',
+        justifyContent: 'center',
+        alignItems: 'center',
+        position: 'relative',
+    },
+    videoPlayButton: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0, 0, 0, 0.3)',
     },
     imageCounter: {
         position: 'absolute',
@@ -273,5 +291,328 @@ export const styles = StyleSheet.create({
         color: '#1877f2',
         marginLeft: 8,
         fontWeight: '600',
+    },
+    // Repost styles
+    repostContainer: {
+        marginHorizontal: 12,
+        marginBottom: 12,
+        padding: 12,
+        backgroundColor: '#f9fafb',
+        borderRadius: 8,
+        borderLeftWidth: 3,
+        borderLeftColor: '#2563eb',
+    },
+    repostHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    repostText: {
+        fontSize: 13,
+        color: '#6b7280',
+        marginLeft: 6,
+        fontWeight: '500',
+    },
+    originalPostContainer: {
+        marginTop: 8,
+    },
+    originalPostHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    originalPostAvatar: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        marginRight: 8,
+    },
+    originalPostInfo: {
+        flex: 1,
+    },
+    originalPostName: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#111827',
+    },
+    originalPostTime: {
+        fontSize: 12,
+        color: '#6b7280',
+        marginTop: 2,
+    },
+    originalPostContent: {
+        fontSize: 14,
+        color: '#374151',
+        lineHeight: 20,
+    },
+    // YouTube styles
+    youtubeContainer: {
+        marginHorizontal: 12,
+        marginBottom: 12,
+    },
+    youtubeThumbnail: {
+        position: 'relative',
+        width: '100%',
+        height: 200,
+        borderRadius: 8,
+        overflow: 'hidden',
+        backgroundColor: '#000',
+    },
+    youtubeImage: {
+        width: '100%',
+        height: '100%',
+    },
+    youtubePlayButton: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    },
+    youtubeLink: {
+        marginTop: 8,
+        fontSize: 14,
+        color: '#2563eb',
+        textDecorationLine: 'underline',
+    },
+    // Music styles
+    musicContainer: {
+        marginHorizontal: 12,
+        marginBottom: 12,
+        padding: 12,
+        backgroundColor: '#eff6ff',
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#dbeafe',
+    },
+    musicHeader: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        marginBottom: 12,
+    },
+    musicThumbnail: {
+        width: 60,
+        height: 60,
+        borderRadius: 8,
+        marginRight: 12,
+    },
+    musicInfo: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: 1,
+    },
+    musicDetails: {
+        marginLeft: 12,
+        flex: 1,
+    },
+    musicTitle: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: '#111827',
+        marginBottom: 4,
+    },
+    musicArtist: {
+        fontSize: 13,
+        color: '#6b7280',
+        marginBottom: 2,
+    },
+    musicGenre: {
+        fontSize: 12,
+        color: '#9ca3af',
+        marginTop: 2,
+    },
+    musicDescription: {
+        fontSize: 13,
+        color: '#4b5563',
+        marginBottom: 12,
+        lineHeight: 18,
+    },
+    audioPlayerContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+    audioPlayButton: {
+        marginRight: 12,
+    },
+    audioInfoContainer: {
+        flex: 1,
+    },
+    audioProgressBar: {
+        height: 4,
+        backgroundColor: '#d1d5db',
+        borderRadius: 2,
+        marginBottom: 6,
+    },
+    audioProgressFill: {
+        height: '100%',
+        backgroundColor: '#2563eb',
+        borderRadius: 2,
+    },
+    audioTimeContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+    },
+    audioTimeText: {
+        fontSize: 11,
+        color: '#6b7280',
+    },
+    purchaseButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#2563eb',
+        paddingVertical: 10,
+        paddingHorizontal: 16,
+        borderRadius: 6,
+        marginTop: 8,
+    },
+    purchaseButtonText: {
+        color: '#fff',
+        fontSize: 14,
+        fontWeight: '600',
+        marginLeft: 6,
+    },
+    // Comments Preview styles
+    commentsPreview: {
+        paddingHorizontal: 12,
+        paddingTop: 4,
+        paddingBottom: 4,
+    },
+    commentPreviewItem: {
+        flexDirection: 'row',
+        marginBottom: 8,
+        alignItems: 'flex-start',
+    },
+    commentPreviewAvatar: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        marginRight: 8,
+    },
+    commentPreviewContent: {
+        flex: 1,
+    },
+    commentPreviewText: {
+        fontSize: 13,
+        color: '#374151',
+        lineHeight: 18,
+    },
+    commentPreviewAuthor: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#111827',
+    },
+    commentPreviewTextContent: {
+        fontSize: 13,
+        color: '#374151',
+        fontWeight: '400',
+    },
+    commentPreviewLikesText: {
+        fontSize: 12,
+        color: '#6b7280',
+        marginTop: 2,
+    },
+    viewAllComments: {
+        marginTop: 4,
+    },
+    viewAllCommentsText: {
+        fontSize: 13,
+        color: '#6b7280',
+    },
+    // Repost Modal styles
+    repostModalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'flex-end',
+    },
+    repostModalContent: {
+        backgroundColor: '#fff',
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        maxHeight: '90%',
+        shadowColor: '#000',
+        shadowOffset: {width: 0, height: -2},
+        shadowOpacity: 0.25,
+        shadowRadius: 10,
+        elevation: 10,
+    },
+    repostModalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#e5e7eb',
+    },
+    repostModalCancel: {
+        fontSize: 16,
+        color: '#6b7280',
+    },
+    repostModalTitle: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: '#111827',
+    },
+    repostModalSubmit: {
+        fontSize: 16,
+        color: '#2563eb',
+        fontWeight: '600',
+    },
+    repostModalSubmitDisabled: {
+        color: '#9ca3af',
+    },
+    repostModalBody: {
+        padding: 16,
+    },
+    repostModalInput: {
+        minHeight: 120,
+        borderWidth: 1,
+        borderColor: '#d1d5db',
+        borderRadius: 12,
+        padding: 12,
+        marginBottom: 16,
+        fontSize: 16,
+        backgroundColor: '#f9fafb',
+        color: '#111827',
+    },
+    repostOriginalPreview: {
+        padding: 12,
+        backgroundColor: '#f9fafb',
+        borderRadius: 8,
+        borderLeftWidth: 3,
+        borderLeftColor: '#2563eb',
+    },
+    repostOriginalHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    repostOriginalAvatar: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        marginRight: 8,
+    },
+    repostOriginalInfo: {
+        flex: 1,
+    },
+    repostOriginalName: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#111827',
+    },
+    repostOriginalTime: {
+        fontSize: 12,
+        color: '#6b7280',
+        marginTop: 2,
+    },
+    repostOriginalContent: {
+        fontSize: 14,
+        color: '#374151',
+        lineHeight: 20,
     },
 });

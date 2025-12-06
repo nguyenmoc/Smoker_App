@@ -1,3 +1,5 @@
+import RenderPost from '@/components/renderPost';
+import { GlobalSearch } from '@/components/search/GlobalSearch';
 import { CreateStoryModal } from '@/components/story/CreateStoryModal';
 import { StoryList } from '@/components/story/StoryList';
 import { StoryViewer } from '@/components/story/StoryViewer';
@@ -21,7 +23,9 @@ import {
     Animated,
     Dimensions,
     Image,
+    KeyboardAvoidingView,
     Modal,
+    Platform,
     RefreshControl,
     ScrollView,
     StatusBar,
@@ -78,7 +82,6 @@ export default function HomeScreen() {
     const [postText, setPostText] = useState('');
     const [selectedMedia, setSelectedMedia] = useState<{ uri: string; type: 'image' | 'video' }[]>([]);
     const scrollY = useRef(new Animated.Value(0)).current;
-    const [currentImageIndexes, setCurrentImageIndexes] = useState<{ [key: string]: number }>({});
     const {authState} = useAuth();
     const currentUserId = authState.currentId;
     const avartarAuthor = authState.avatar;
@@ -144,6 +147,10 @@ export default function HomeScreen() {
     const [currentStoryIndex, setCurrentStoryIndex] = useState(0);
     const [createStoryModalVisible, setCreateStoryModalVisible] = useState(false);
     const [selectedStoryId, setSelectedStoryId] = useState<string | undefined>(undefined);
+    const [repostModalVisible, setRepostModalVisible] = useState(false);
+    const [repostContent, setRepostContent] = useState('');
+    const [repostingItem, setRepostingItem] = useState<PostData | null>(null);
+    const [searchModalVisible, setSearchModalVisible] = useState(false);
 
     const {
         posts,
@@ -154,7 +161,7 @@ export default function HomeScreen() {
         uploadProgress,
         createPost,
         likePost,
-        refresh,
+        refresh: refreshFeed,
         loadMore,
         hasMore
     } = useFeed();
@@ -258,6 +265,50 @@ export default function HomeScreen() {
         });
     }, [router]);
 
+    const submitRepost = useCallback(async () => {
+        if (!repostingItem) return;
+
+        const repostContentText = repostContent.trim() || repostingItem.content || '';
+        
+        try {
+            let request = {
+                title: repostingItem.title || '',
+                content: repostContentText,
+                images: repostingItem.images,
+                videos: repostingItem.videos,
+                audios: "",
+                musicTitle: "",
+                artistName: "",
+                description: "",
+                hashTag: "",
+                musicPurchaseLink: "",
+                musicBackgroundImage: "",
+                type: repostingItem.type,
+                songId: repostingItem.songId,
+                musicId: repostingItem.musicId,
+                entityAccountId: entityAccountId,
+                entityId: repostingItem.author?.entityId ?? repostingItem.entityId,
+                entityType: repostingItem.author?.entityType ?? repostingItem.entityType,
+                repostedFromId: repostingItem.id ?? repostingItem._id,
+                repostedFromType: repostingItem.type
+            }
+            const response = await feedApi.rePost(request);
+            if (response.success) {
+                Alert.alert('Thành công', 'Đã đăng lại bài viết');
+                setRepostModalVisible(false);
+                setRepostContent('');
+                setRepostingItem(null);
+                // Refresh feed
+                refreshFeed();
+            } else {
+                Alert.alert('Lỗi', 'Không đăng lại bài viết');
+            }
+        } catch (error) {
+            console.log("error repost: ", error);
+            Alert.alert('Lỗi', 'Không đăng lại bài viết');
+        }
+    }, [repostingItem, repostContent, entityAccountId, feedApi]);
+
     // Story handlers
     const handleStoryPress = useCallback((story: StoryData, index: number) => {
         setSelectedStoryId(story._id);
@@ -282,9 +333,9 @@ export default function HomeScreen() {
     }, [createStory]);
 
     const handleRefresh = useCallback(() => {
-        refresh();
+        refreshFeed();
         refreshStories();
-    }, [refresh, refreshStories]);
+    }, [refreshFeed, refreshStories]);
 
     const formatTime = (dateString: string) => {
         const date = new Date(dateString);
@@ -302,190 +353,23 @@ export default function HomeScreen() {
         extrapolate: 'clamp',
     });
 
-    const handleImageScroll = (event: any, postId: string) => {
-        const contentOffsetX = event.nativeEvent.contentOffset.x;
-        const currentIndex = Math.round(contentOffsetX / screenWidth);
-        setCurrentImageIndexes(prev => ({
-            ...prev,
-            [postId]: currentIndex
-        }));
-    };
+    const handleRepostAction = useCallback((item: PostData) => {
+        setRepostingItem(item);
+        setRepostContent('');
+        setRepostModalVisible(true);
+    }, []);
 
-    const renderMediaItem = (mediaUrl: string, isVideo: boolean = false) => {
-        if (isVideo) {
-            return (
-                <Video
-                    source={{uri: mediaUrl}}
-                    style={styles.postImage}
-                    resizeMode={ResizeMode.COVER}
-                    useNativeControls
-                    shouldPlay={false}
-                />
-            );
-        } else {
-            return (
-                <Image
-                    source={{uri: mediaUrl}}
-                    style={styles.postImage}
-                    resizeMode="cover"
-                />
-            );
-        }
-    };
-
-    const renderItem = ({item}: { item: PostData }) => {
-        const likeCount = Object.keys(item.likes || {}).length;
-        const commentCount = Object.keys(item.comments || {}).length;
-        const isLiked = !!currentUserId && !!Object.values(item.likes || {}).find(
-            like => like.accountId === currentUserId
-        );
-
-        let mediaItems = item.medias || item.mediaIds || [];
-        const imageMedias = mediaItems.filter(m => m.type === 'image');
-        const videoMedias = mediaItems.filter(m => m.type === 'video');
-        const hasMedia = mediaItems.length > 0;
-
-        const handleRepost = async () => {
-            try {
-                let request = {
-                    title: item.title,
-                    content: item.content,
-                    images: item.images,
-                    videos: item.videos,
-                    audios: "",
-                    musicTitle: "",
-                    artistName: "",
-                    description: "",
-                    hashTag: "",
-                    musicPurchaseLink: "",
-                    musicBackgroundImage: "",
-                    type: item.type,
-                    songId: item.songId,
-                    musicId: item.musicId,
-                    entityAccountId: entityAccountId,
-                    entityId: item.entityId,
-                    entityType: item.entityType,
-                    repostedFromId: item._id,
-                    repostedFromType: item.type
-                }
-                const response = await feedApi.rePost(request);
-                if (response.success) {
-                    Alert.alert('Thành công', 'Đã đăng lại bài viết');
-                } else {
-                    Alert.alert('Lỗi', 'Không đăng lại bài viết');
-                }
-            } catch (error) {
-                console.log("error repost: ", error);
-                Alert.alert('Lỗi', 'Không đăng lại bài viết');
-            }
-        };
+    const renderItem = useCallback(({item}: { item: PostData }) => {
         return (
-            <View style={styles.card}>
-                <View style={styles.cardHeader}>
-                    <TouchableOpacity onPress={() => handleUserPress(item.authorEntityAccountId)}>
-                        <Image source={{uri: item.authorAvatar}} style={styles.avatar}/>
-                    </TouchableOpacity>
-                    <View style={styles.headerInfo}>
-                        <TouchableOpacity onPress={() => handleUserPress(item.authorEntityAccountId)}>
-                            <Text style={styles.username}>{item.authorName}</Text>
-                        </TouchableOpacity>
-                        <Text style={styles.subText}>
-                            {formatTime(item.createdAt)}
-                        </Text>
-                    </View>
-                </View>
-
-                <TouchableOpacity onPress={() => handleComment(item._id)}>
-                    <Text style={styles.content}>{item.content}</Text>
-                </TouchableOpacity>
-
-                {hasMedia && (
-                    <View style={styles.imageGalleryContainer}>
-                        <ScrollView
-                            horizontal
-                            pagingEnabled
-                            showsHorizontalScrollIndicator={false}
-                            snapToInterval={screenWidth - 16}
-                            decelerationRate="fast"
-                            onScroll={(event) => handleImageScroll(event, item._id)}
-                            scrollEventThrottle={16}
-                        >
-                            {imageMedias.map((media, index) => (
-                                <TouchableOpacity
-                                    key={`image-${media._id || media.id || index}`}
-                                    style={styles.imageContainer}
-                                    onPress={() => handleComment(item._id)}
-                                >
-                                    {renderMediaItem(media.url, false)}
-                                </TouchableOpacity>
-                            ))}
-
-                            {videoMedias.map((media, index) => (
-                                <TouchableOpacity
-                                    key={`video-${media._id || media.id || index}`}
-                                    style={styles.imageContainer}
-                                    onPress={() => handleComment(item._id)}
-                                >
-                                    {renderMediaItem(media.url, true)}
-                                </TouchableOpacity>
-                            ))}
-                        </ScrollView>
-
-                        {mediaItems.length > 1 && (
-                            <View style={styles.imageCounter}>
-                                <Text style={styles.imageCounterText}>
-                                    {(currentImageIndexes[item._id] || 0) + 1}/{mediaItems.length}
-                                </Text>
-                            </View>
-                        )}
-                    </View>
-                )}
-
-                <View style={styles.statsContainer}>
-                    <Text style={styles.statsText}>
-                        {likeCount > 0 && `${likeCount} lượt thích`}
-                        {likeCount > 0 && commentCount > 0 && ' • '}
-                        {commentCount > 0 && `${commentCount} bình luận`}
-                    </Text>
-                </View>
-
-                <View style={styles.actions}>
-                    <TouchableOpacity
-                        style={styles.actionBtn}
-                        onPress={() => handleLike(item._id)}
-                    >
-                        <Ionicons
-                            name={isLiked ? "heart" : "heart-outline"}
-                            size={20}
-                            color={isLiked ? "#ef4444" : "#6b7280"}
-                        />
-                        <Text style={[
-                            styles.actionText,
-                            isLiked && {color: '#ef4444'}
-                        ]}>
-                            {isLiked ? 'Đã thích' : 'Thích'}
-                        </Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        style={styles.actionBtn}
-                        onPress={() => handleComment(item._id)}
-                    >
-                        <Ionicons name="chatbubble-outline" size={18} color="#6b7280"/>
-                        <Text style={styles.actionText}>Bình luận</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        style={styles.actionBtn}
-                        onPress={handleRepost}
-                    >
-                        <Ionicons name="repeat-outline" size={18} color="#6b7280"/>
-                        <Text style={styles.actionText}>Đăng lại</Text>
-                    </TouchableOpacity>
-                </View>
-            </View>
+            <RenderPost
+                item={item}
+                currentId={authState.currentId ?? ''}
+                currentEntityAccountId={authState.EntityAccountId}
+                token={authState.token ?? ''}
+                onAction={handleRepostAction}
+            />
         );
-    };
+    }, [authState.currentId, authState.token, handleRepostAction]);
 
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
@@ -499,34 +383,54 @@ export default function HomeScreen() {
                 iconName="chatbubble-outline"
                 onIconPress={() => router.push('/chat')}
                 style={{}}
-                // Custom right icon with badge
+                // Custom right icons with search and chat
                 rightElement={
-                    unreadCount > 0 ? (
-                        <View style={{position: 'relative'}}>
-                            <Ionicons name="chatbubble-outline" size={24} color="#fff"/>
-                            <View style={{
-                                position: 'absolute',
-                                top: -6,
-                                right: -6,
-                                backgroundColor: '#ef4444',
-                                borderRadius: 8,
-                                minWidth: 16,
-                                height: 16,
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                paddingHorizontal: 3,
-                            }}>
-                                <Text style={{color: '#fff', fontSize: 10, fontWeight: 'bold'}}>{unreadCount}</Text>
+                    <View style={{flexDirection: 'row', gap: 8}}>
+                        <TouchableOpacity
+                            style={{width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center'}}
+                            onPress={() => setSearchModalVisible(true)}
+                        >
+                            <Ionicons name="search" size={24} color="#fff"/>
+                        </TouchableOpacity>
+                        {unreadCount > 0 ? (
+                            <View style={{position: 'relative'}}>
+                                <TouchableOpacity
+                                    style={{width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center'}}
+                                    onPress={() => router.push('/chat')}
+                                >
+                                    <Ionicons name="chatbubble-outline" size={24} color="#fff"/>
+                                </TouchableOpacity>
+                                <View style={{
+                                    position: 'absolute',
+                                    top: -6,
+                                    right: -6,
+                                    backgroundColor: '#ef4444',
+                                    borderRadius: 8,
+                                    minWidth: 16,
+                                    height: 16,
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    paddingHorizontal: 3,
+                                }}>
+                                    <Text style={{color: '#fff', fontSize: 10, fontWeight: 'bold'}}>{unreadCount}</Text>
+                                </View>
                             </View>
-                        </View>
-                    ) : null
+                        ) : (
+                            <TouchableOpacity
+                                style={{width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center'}}
+                                onPress={() => router.push('/chat')}
+                            >
+                                <Ionicons name="chatbubble-outline" size={24} color="#fff"/>
+                            </TouchableOpacity>
+                        )}
+                    </View>
                 }
             />
 
             <Animated.FlatList
                 data={posts}
                 renderItem={renderItem}
-                keyExtractor={(item) => item._id}
+                    keyExtractor={(item) => item.id ?? item._id ?? ''}
                 style={[styles.container, {paddingTop: 40}]}
                 contentContainerStyle={{paddingBottom: 40}}
                 ListHeaderComponent={
@@ -673,11 +577,10 @@ export default function HomeScreen() {
                 initialIndex={currentStoryIndex}
                 initialStoryId={selectedStoryId} 
                 currentUserEntityAccountId={entityAccountId}
-                onClose={() => setStoryViewerVisible(false)}
+                onClose={handleCloseStoryViewer}
                 onLike={likeStory}
                 onMarkAsViewed={markAsViewed}
                 onDelete={deleteStory}
-                onClose={handleCloseStoryViewer}
             />
 
             {/* Create Story Modal */}
@@ -689,6 +592,95 @@ export default function HomeScreen() {
                 onClose={() => setCreateStoryModalVisible(false)}
                 onSubmit={handleSubmitStory}
             />
+
+            {/* Global Search Modal */}
+            <GlobalSearch
+                visible={searchModalVisible}
+                onClose={() => setSearchModalVisible(false)}
+            />
+
+            {/* Repost Modal */}
+            <Modal
+                visible={repostModalVisible}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => {
+                    setRepostModalVisible(false);
+                    setRepostContent('');
+                    setRepostingItem(null);
+                }}
+            >
+                <KeyboardAvoidingView
+                    style={styles.repostModalOverlay}
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+                >
+                    <View style={styles.repostModalContent}>
+                        <View style={styles.repostModalHeader}>
+                            <TouchableOpacity
+                                onPress={() => {
+                                    setRepostModalVisible(false);
+                                    setRepostContent('');
+                                    setRepostingItem(null);
+                                }}
+                            >
+                                <Text style={styles.repostModalCancel}>Hủy</Text>
+                            </TouchableOpacity>
+                            <Text style={styles.repostModalTitle}>Đăng lại</Text>
+                            <TouchableOpacity
+                                onPress={submitRepost}
+                                disabled={!repostingItem}
+                            >
+                                <Text style={[
+                                    styles.repostModalSubmit,
+                                    !repostingItem && styles.repostModalSubmitDisabled
+                                ]}>
+                                    Đăng
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        <View style={styles.repostModalBody}>
+                            <TextInput
+                                style={styles.repostModalInput}
+                                placeholder="Thêm suy nghĩ của bạn..."
+                                placeholderTextColor="#9ca3af"
+                                value={repostContent}
+                                onChangeText={setRepostContent}
+                                multiline
+                                numberOfLines={6}
+                                textAlignVertical="top"
+                                autoFocus
+                            />
+                            
+                            {/* Preview original post */}
+                            {repostingItem && (
+                                <View style={styles.repostOriginalPreview}>
+                                    <View style={styles.repostOriginalHeader}>
+                                        <Image 
+                                            source={{uri: repostingItem.author?.avatar ?? repostingItem.authorAvatar ?? ''}} 
+                                            style={styles.repostOriginalAvatar}
+                                        />
+                                        <View style={styles.repostOriginalInfo}>
+                                            <Text style={styles.repostOriginalName}>
+                                                {repostingItem.author?.name ?? repostingItem.authorName}
+                                            </Text>
+                                            <Text style={styles.repostOriginalTime}>
+                                                {formatTime(repostingItem.createdAt)}
+                                            </Text>
+                                        </View>
+                                    </View>
+                                    {repostingItem.content && (
+                                        <Text style={styles.repostOriginalContent} numberOfLines={3}>
+                                            {repostingItem.content}
+                                        </Text>
+                                    )}
+                                </View>
+                            )}
+                        </View>
+                    </View>
+                </KeyboardAvoidingView>
+            </Modal>
         </SafeAreaView>
     );
 }
@@ -776,6 +768,24 @@ const styles = StyleSheet.create({
     postImage: {
         width: screenWidth - 16,
         height: 250,
+    },
+    videoContainer: {
+        width: screenWidth - 16,
+        height: 250,
+        backgroundColor: '#000',
+        justifyContent: 'center',
+        alignItems: 'center',
+        position: 'relative',
+    },
+    videoPlayButton: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0, 0, 0, 0.3)',
     },
     imageCounter: {
         position: 'absolute',
@@ -965,5 +975,211 @@ const styles = StyleSheet.create({
         color: '#1877f2',
         marginLeft: 8,
         fontWeight: '600',
+    },
+    // Repost styles
+    repostContainer: {
+        marginHorizontal: 12,
+        marginBottom: 12,
+        padding: 12,
+        backgroundColor: '#f9fafb',
+        borderRadius: 8,
+        borderLeftWidth: 3,
+        borderLeftColor: '#2563eb',
+    },
+    repostHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    repostText: {
+        fontSize: 13,
+        color: '#6b7280',
+        marginLeft: 6,
+        fontWeight: '500',
+    },
+    originalPostContainer: {
+        marginTop: 8,
+    },
+    originalPostHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    originalPostAvatar: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        marginRight: 8,
+    },
+    originalPostInfo: {
+        flex: 1,
+    },
+    originalPostName: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#111827',
+    },
+    originalPostTime: {
+        fontSize: 12,
+        color: '#6b7280',
+        marginTop: 2,
+    },
+    originalPostContent: {
+        fontSize: 14,
+        color: '#374151',
+        lineHeight: 20,
+    },
+    // YouTube styles
+    youtubeContainer: {
+        marginHorizontal: 12,
+        marginBottom: 12,
+    },
+    youtubeThumbnail: {
+        position: 'relative',
+        width: '100%',
+        height: 200,
+        borderRadius: 8,
+        overflow: 'hidden',
+        backgroundColor: '#000',
+    },
+    youtubeImage: {
+        width: '100%',
+        height: '100%',
+    },
+    youtubePlayButton: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    },
+    youtubeLink: {
+        marginTop: 8,
+        fontSize: 14,
+        color: '#2563eb',
+        textDecorationLine: 'underline',
+    },
+    // Music styles
+    musicContainer: {
+        marginHorizontal: 12,
+        marginBottom: 12,
+        padding: 12,
+        backgroundColor: '#eff6ff',
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#dbeafe',
+    },
+    musicInfo: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    musicDetails: {
+        marginLeft: 12,
+        flex: 1,
+    },
+    musicTitle: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: '#111827',
+        marginBottom: 4,
+    },
+    musicArtist: {
+        fontSize: 13,
+        color: '#6b7280',
+    },
+    // Repost Modal styles
+    repostModalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'flex-end',
+    },
+    repostModalContent: {
+        backgroundColor: '#fff',
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        maxHeight: '90%',
+        shadowColor: '#000',
+        shadowOffset: {width: 0, height: -2},
+        shadowOpacity: 0.25,
+        shadowRadius: 10,
+        elevation: 10,
+    },
+    repostModalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#e5e7eb',
+    },
+    repostModalCancel: {
+        fontSize: 16,
+        color: '#6b7280',
+    },
+    repostModalTitle: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: '#111827',
+    },
+    repostModalSubmit: {
+        fontSize: 16,
+        color: '#2563eb',
+        fontWeight: '600',
+    },
+    repostModalSubmitDisabled: {
+        color: '#9ca3af',
+    },
+    repostModalBody: {
+        padding: 16,
+    },
+    repostModalInput: {
+        minHeight: 120,
+        borderWidth: 1,
+        borderColor: '#d1d5db',
+        borderRadius: 12,
+        padding: 12,
+        marginBottom: 16,
+        fontSize: 16,
+        backgroundColor: '#f9fafb',
+        color: '#111827',
+    },
+    repostOriginalPreview: {
+        padding: 12,
+        backgroundColor: '#f9fafb',
+        borderRadius: 8,
+        borderLeftWidth: 3,
+        borderLeftColor: '#2563eb',
+    },
+    repostOriginalHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    repostOriginalAvatar: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        marginRight: 8,
+    },
+    repostOriginalInfo: {
+        flex: 1,
+    },
+    repostOriginalName: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#111827',
+    },
+    repostOriginalTime: {
+        fontSize: 12,
+        color: '#6b7280',
+        marginTop: 2,
+    },
+    repostOriginalContent: {
+        fontSize: 14,
+        color: '#374151',
+        lineHeight: 20,
     },
 });

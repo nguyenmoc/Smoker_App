@@ -121,7 +121,16 @@ export const useAuth = () => {
 
 
   const logout = async () => {
-    await AsyncStorage.multiRemove(['userEmail', 'token', 'role']);
+    // Xóa tất cả các keys liên quan đến authentication
+    await AsyncStorage.multiRemove([
+      'userEmail',
+      'token',
+      'role',
+      'currentId',
+      'avatar',
+      'type',
+      'EntityAccountId'
+    ]);
     setAuthState({
       isAuthenticated: false,
       userEmail: undefined,
